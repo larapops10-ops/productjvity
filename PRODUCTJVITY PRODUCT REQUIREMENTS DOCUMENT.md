@@ -521,3 +521,37 @@ Accountability drives completion.
 Completion creates rewards.**
 
 The platform can ultimately provide this infrastructure directly to individuals or power accountability programmes operated by third-party institutions and applications.
+
+---
+
+**22. Implementation Notes — Decisions (27 Sep 2026)**
+
+These decisions do not change the requirements above. They lock the build stack for efficiency and cost:
+
+- Local + DB: Node + PostgreSQL via Postgres.app locally. No Docker for now.
+  Reason: you wanted the app and DB running locally with the most efficient free/cheapest option. Postgres.app is free, native on Mac, and needs no Docker. You picked Postgres now so you are not forced to migrate later from SQLite.
+- Email: ZeptoMail primary via `notify/email` adapter.
+  Reason: cost is a factor. ZeptoMail keeps running costs near zero at low volume. You can upgrade later to Resend / Amazon SES without code change (same adapter interface).
+- Files/evidence: Cloudflare R2 private bucket (S3-compatible, signed URLs); local `./uploads/` stub with same interface for offline dev.
+  Reason: you asked for R2 instead of generic S3. R2 has a free tier and zero egress fees, fits evidence uploads, and stays swappable via adapter.
+- Staging/prod hosting (from implementation plan): Render / Fly / AWS; GitHub Actions CI.
+  Reason: free/cheap start with managed Postgres and simple Node deploys; AWS only for later scale.
+- Full stack locked in `docs/IMPLEMENTATION_PLAN.md` §3.1.
+
+---
+
+**23. Design Direction — Decisions (27 Sep 2026)**
+
+Premium, calm, minimal consumer product (not generic SaaS). Preview: `design.html`.
+
+- Visual system: warm paper `#FAF8F5`, charcoal `#1C1917`, single indigo accent `#5F4BE0` + soft `#EFEDFD`; white surfaces, thin `#E9E3DA` borders, soft shadows, 18px radii, generous whitespace, large confident type.
+- Brand: understated "Productjvity" wordmark with minimal ◍ mark.
+- Navigation: Home / Goals / Focus / Progress / Rewards / Profile; left sidebar desktop, bottom tabs mobile.
+- Home answers "What am I working on today?": greeting + "Small progress. Big results." + Today's Focus panel with Start Focus + momentum strip.
+- Goals feel like journeys: name, %, bar, next milestone, deadline, streak — not task cards.
+- Goal detail answers "Where am I / what is next": large progress + milestone list + current tasks.
+- Focus Mode is distraction-free: title, large 32:48-style timer, Pause / Complete.
+- Completion is rewarding but restrained: "You kept your commitment." + points + streak.
+- Rewards makes progress tangible: points, streaks, goals, milestones, unlocked/next.
+- Goal creation uses progressive disclosure starting from "What do you want to accomplish?"
+- Mobile is first-class: bottom nav, large targets, minimal scroll; subtle animation only for progress/feedback.
