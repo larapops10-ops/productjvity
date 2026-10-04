@@ -251,6 +251,21 @@ export async function handlePostgresApi(req, res, url, send) {
     const rows = await pool.query("select id,template,payload,sent_at from notifications where user_id=$1 order by sent_at desc", [user.id]);
     return send(200, rows.rows.map((row) => ({ id: row.id, template: row.template, ...row.payload, sentAt: row.sent_at })));
   }
+  if (method === "GET" && path.length === 1 && path[0] === "accountability-partners") {
+    const rows = await pool.query("select id,email,name,status from accountability_partners where owner_id=$1 order by created_at desc", [user.id]);
+    return send(200, rows.rows.map((row) => ({ id: row.id, email: row.email, name: row.name, status: row.status })));
+  }
+  if (method === "POST" && path.length === 1 && path[0] === "accountability-partners") {
+    const body = await readJson(req); const email = String(body.email || "").trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return send(422, { error: "a valid email is required" });
+    const created = await pool.query(`insert into accountability_partners (id,owner_id,email,name,status) values ($1,$2,$3,$4,'invited')
+      on conflict (owner_id,email) do update set name=excluded.name returning *`, [randomUUID(), user.id, email, String(body.name || "").trim() || null]);
+    return send(201, { id: created.rows[0].id, email: created.rows[0].email, name: created.rows[0].name, status: created.rows[0].status });
+  }
+  if (method === "GET" && path.length === 1 && path[0] === "awards") {
+    const rows = await pool.query("select id,kind,title,description,awarded_at from awards where user_id=$1 order by awarded_at desc", [user.id]);
+    return send(200, rows.rows.map((row) => ({ id: row.id, kind: row.kind, title: row.title, description: row.description, awardedAt: row.awarded_at })));
+  }
   if (method === "POST" && path.join("/") === "notifications/send-reminders") {
     const due = await pool.query(`select id,deadline from commitments where user_id=$1 and status='active'
       and deadline <= now() + interval '7 days'`, [user.id]);
@@ -373,6 +388,8 @@ export async function handlePostgresApi(req, res, url, send) {
       where id=$2 and commitment_id=$3 returning *`, [typeof body.done === "boolean" ? body.done : null, path[3], commitment.id]);
     if (!updated.rows[0]) return send(404, { error: "not-found" });
     const m = updated.rows[0];
+    if (m.done) await pool.query(`insert into awards (id,user_id,commitment_id,milestone_id,kind,title,description)
+      select $1,$2,$3,$4,'milestone_badge','One step closer','You completed a milestone.' where not exists (select 1 from awards where milestone_id=$4 and kind='milestone_badge')`, [randomUUID(), user.id, commitment.id, m.id]);
     return send(200, { id: m.id, title: m.title, dueAt: m.due_at, required: m.required, done: m.done });
   }
   if (method === "POST" && path[2] === "submit-for-verification") {
