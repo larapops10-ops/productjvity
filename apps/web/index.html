@@ -27,7 +27,7 @@
 <div class="app">
 <aside class="side"><div class="logo"><span class="mark">◍</span>Productjvity</div>
 <nav class="nav" id="nav">
-<button type="button" data-p="dash" class="on">⌂ Dashboard</button><button type="button" data-p="new">＋ New</button><button type="button" data-p="orgs">🏛 Orgs</button><button type="button" data-p="notes">✉ Notes</button><button type="button" data-p="profile">○ Profile</button>
+<button type="button" data-p="dash" class="on">⌂ Dashboard</button><button type="button" data-p="new">＋ New</button><button type="button" data-p="orgs">🏛 Orgs</button><button type="button" data-p="notes">✉ Notes</button><button type="button" data-p="profile">○ Profile</button><button type="button" data-p="account">◉ Account</button>
 </nav><div class="ver">stage 4+5 · api-backed</div></aside>
 <main class="main">
 <div id="err"></div>
@@ -75,34 +75,52 @@
 <div class="card"><label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="consentBox" style="width:auto"> Make my profile public</label></div>
 <div class="card" id="histBox"></div>
 </section>
+<section class="page" id="p-account">
+<div class="eyebrow">ACCOUNT</div><h1>Sign in</h1><p class="sub" id="accountState">Create an account to keep your commitments private.</p>
+<div class="card"><div class="eyebrow">Create account</div><div style="display:grid;gap:10px;margin-top:10px"><input id="signUpName" placeholder="Your name"><input id="signUpEmail" type="email" placeholder="Email address"><input id="signUpPassword" type="password" placeholder="Password (at least 10 characters)"><button type="button" class="btn btn-p" id="signUp">Create account</button></div></div>
+<div class="card"><div class="eyebrow">Already have an account?</div><div style="display:grid;gap:10px;margin-top:10px"><input id="loginEmail" type="email" placeholder="Email address"><input id="loginPassword" type="password" placeholder="Password"><button type="button" class="btn btn-s" id="login">Sign in</button><button type="button" class="btn btn-s" id="logout" style="display:none">Sign out</button></div></div>
+</section>
 </main></div>
 <script>
 (function(){
 "use strict";
 var API = ""; // same-origin: page is served by the API server itself
+var authToken = localStorage.getItem("productjvity_auth_token") || "";
 var errBox = document.getElementById("err");
 function err(m){ errBox.style.display="block"; errBox.textContent=m; }
 function $(id){ return document.getElementById(id); }
 function call(method, path, body){
   // Always send a JSON body on POST: Firefox omits Content-Length for
   // bodyless fetch POSTs and WEBrick answers 411 (curl sends 0, hiding this).
-  var opts = {method:method,headers:{"Content-Type":"application/json"}};
+  var headers={"Content-Type":"application/json"}; if(authToken) headers.Authorization="Bearer "+authToken;
+  var opts = {method:method,headers:headers};
   opts.body = (method==="POST") ? JSON.stringify(body||{}) : (body?JSON.stringify(body):undefined);
   return fetch(API+path,opts)
     .then(function(r){ return r.json().then(function(j){ return {status:r.status,body:j}; }); });
 }
 function go(p){
   var ps=document.querySelectorAll(".page"); for(var i=0;i<ps.length;i++) ps[i].classList.remove("on");
-  var map={dash:"p-dash",new:"p-new",discover:"p-discover",detail:"p-detail",orgs:"p-orgs",prog:"p-prog",notes:"p-notes",profile:"p-profile"};
+  var map={dash:"p-dash",new:"p-new",discover:"p-discover",detail:"p-detail",orgs:"p-orgs",prog:"p-prog",notes:"p-notes",profile:"p-profile",account:"p-account"};
   $(map[p]||"p-dash").classList.add("on");
   var bs=document.querySelectorAll("#nav button"); for(var j=0;j<bs.length;j++) bs[j].classList.toggle("on",bs[j].getAttribute("data-p")===p);
   if(p==="dash") load();
   if(p==="orgs") loadOrgs();
   if(p==="notes") loadNotes();
   if(p==="profile") loadProfile();
+  if(p==="account") loadAccount();
 }
 var navs=document.querySelectorAll("#nav button");
 for(var n=0;n<navs.length;n++)(function(b){b.addEventListener("click",function(){go(b.getAttribute("data-p"));});})(navs[n]);
+function loadAccount(){
+  call("GET","/me").then(function(r){
+    if(r.status===200){ $("accountState").textContent="Signed in as "+r.body.user.name+" ("+r.body.user.email+")."; $("logout").style.display="inline-block"; }
+    else { $("accountState").textContent="Create an account to keep your commitments private."; $("logout").style.display="none"; }
+  });
+}
+function saveSession(r){ authToken=r.body.token; localStorage.setItem("productjvity_auth_token",authToken); loadAccount(); load(); }
+$("signUp").addEventListener("click",function(){ call("POST","/auth/signup",{name:$("signUpName").value.trim(),email:$("signUpEmail").value.trim(),password:$("signUpPassword").value}).then(function(r){ if(r.status===201) saveSession(r); else err(r.body.error||"Could not create account"); }); });
+$("login").addEventListener("click",function(){ call("POST","/auth/login",{email:$("loginEmail").value.trim(),password:$("loginPassword").value}).then(function(r){ if(r.status===200) saveSession(r); else err(r.body.error||"Could not sign in"); }); });
+$("logout").addEventListener("click",function(){ call("POST","/auth/logout",{}).then(function(){ authToken=""; localStorage.removeItem("productjvity_auth_token"); loadAccount(); load(); }); });
 function load(){
   call("GET","/dashboard/summary").then(function(s){
     if(s.status===200){ var d=s.body;

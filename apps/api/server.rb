@@ -8,6 +8,7 @@ require "fileutils"
 require "date"
 require "base64"
 require "digest"
+require "openssl"
 require_relative "../../packages/settlement/settle"
 
 PORT  = (ENV["PORT"] || 3001).to_i
@@ -21,6 +22,9 @@ EVIDENCE_TYPES = {
   "image/webp" => ".webp",
   "application/pdf" => ".pdf"
 }.freeze
+DEMO_MODE = ENV.fetch("DEMO_MODE", ENV["APP_ENV"] == "production" ? "false" : "true") == "true"
+PASSWORD_ITERATIONS = 210_000
+SESSION_LIFETIME_SECONDS = 60 * 60 * 24 * 14
 FileUtils.mkdir_p(File.dirname(STORE))
 FileUtils.mkdir_p(UPLOAD_DIR)
 
@@ -29,14 +33,14 @@ def load_db
             "users" => [{ "id" => "demo-user", "name" => "Lara", "email" => "lara@example.com",
                           "role" => "platform_admin", "consentProfilePublic" => false }],
             "institutions" => [], "programmes" => [], "notifications" => [],
-            "disputes" => [], "audit" => [] }
+            "disputes" => [], "audit" => [], "sessions" => [] }
   return blank unless File.exist?(STORE)
   db = JSON.parse(File.read(STORE))
   blank.merge(db)
 rescue StandardError
   { "commitments" => [], "ledger" => [], "breakage" => [],
     "users" => [], "institutions" => [], "programmes" => [], "notifications" => [],
-    "disputes" => [], "audit" => [] }
+    "disputes" => [], "audit" => [], "sessions" => [] }
 end
 
 def save_db(db)
@@ -102,6 +106,67 @@ end
 
 def find_user(db, id)
   (db["users"] || []).find { |u| u["id"] == id }
+end
+
+def password_record(password)
+  salt = SecureRandom.random_bytes(16)
+  digest = OpenSSL::PKCS5.pbkdf2_hmac(password, salt, PASSWORD_ITERATIONS, 32, "sha256")
+  { "salt" => Base64.strict_encode64(salt), "digest" => Base64.strict_encode64(digest) }
+end
+
+def secure_compare(left, right)
+  return false unless left.bytesize == right.bytesize
+  difference = 0
+  left.bytes.zip(right.bytes) { |a, b| difference |= a ^ b }
+  difference.zero?
+end
+
+def password_matches?(password, record)
+  return false if record.nil? || record["salt"].to_s.empty? || record["digest"].to_s.empty?
+  salt = Base64.strict_decode64(record["salt"])
+  expected = Base64.strict_decode64(record["digest"])
+  actual = OpenSSL::PKCS5.pbkdf2_hmac(password, salt, PASSWORD_ITERATIONS, expected.bytesize, "sha256")
+  secure_compare(actual, expected)
+rescue ArgumentError
+  false
+end
+
+def public_user(user)
+  user.slice("id", "email", "name", "role", "consentProfilePublic", "createdAt")
+end
+
+def issue_session(db, user_id)
+  raw_token = SecureRandom.urlsafe_base64(32)
+  db["sessions"] ||= []
+  db["sessions"].reject! { |s| s["expiresAt"].to_i <= Time.now.to_i }
+  db["sessions"] << {
+    "id" => SecureRandom.uuid,
+    "userId" => user_id,
+    "tokenDigest" => Digest::SHA256.hexdigest(raw_token),
+    "expiresAt" => Time.now.to_i + SESSION_LIFETIME_SECONDS,
+    "createdAt" => Time.now.utc.iso8601
+  }
+  raw_token
+end
+
+def current_user(db, req)
+  token = req["authorization"].to_s.sub(/\ABearer\s+/i, "")
+  unless token.empty?
+    session = (db["sessions"] || []).find do |s|
+      s["tokenDigest"] == Digest::SHA256.hexdigest(token) && s["expiresAt"].to_i > Time.now.to_i
+    end
+    return find_user(db, session["userId"]) if session
+  end
+  DEMO_MODE ? find_user(db, "demo-user") : nil
+end
+
+def owner?(user, commitment)
+  user && commitment && commitment["userId"] == user["id"]
+end
+
+def find_owned_commitment(db, user, id)
+  commitment = find_commitment(db, id)
+  owner?(user, commitment) ? commitment : nil
 end
 
 def current_rules(programme)
@@ -221,12 +286,57 @@ server.mount_proc("/") do |req, res|
   body = read_body(req)
 
   case [req.request_method, parts[0]]
+  when ["POST", "auth"]
+    if parts[1] == "signup"
+      name = body["name"].to_s.strip
+      email = body["email"].to_s.strip.downcase
+      password = body["password"].to_s
+      if name.empty? || email !~ /\A[^@\s]+@[^@\s]+\.[^@\s]+\z/
+        json(res, 422, { error: "name and a valid email are required" })
+      elsif password.length < 10
+        json(res, 422, { error: "password must be at least 10 characters" })
+      elsif (db["users"] || []).any? { |u| u["email"].to_s.downcase == email }
+        json(res, 409, { error: "an account already exists for this email" })
+      else
+        user = { "id" => SecureRandom.uuid, "name" => name, "email" => email,
+                 "role" => "user", "consentProfilePublic" => false,
+                 "password" => password_record(password), "createdAt" => Time.now.utc.iso8601 }
+        db["users"] << user
+        token = issue_session(db, user["id"])
+        save_db(db)
+        json(res, 201, { "token" => token, "user" => public_user(user) })
+      end
+    elsif parts[1] == "login"
+      email = body["email"].to_s.strip.downcase
+      user = (db["users"] || []).find { |u| u["email"].to_s.downcase == email }
+      if user && password_matches?(body["password"].to_s, user["password"])
+        token = issue_session(db, user["id"])
+        save_db(db)
+        json(res, 200, { "token" => token, "user" => public_user(user) })
+      else
+        json(res, 401, { error: "email or password is incorrect" })
+      end
+    elsif parts[1] == "logout"
+      token = req["authorization"].to_s.sub(/\ABearer\s+/i, "")
+      db["sessions"] = (db["sessions"] || []).reject { |s| s["tokenDigest"] == Digest::SHA256.hexdigest(token) }
+      save_db(db)
+      json(res, 200, { ok: true })
+    else
+      json(res, 404, { error: "not-found" })
+    end
+  when ["GET", "me"]
+    user = current_user(db, req)
+    user ? json(res, 200, { "user" => public_user(user), "demoMode" => DEMO_MODE }) : json(res, 401, { error: "sign-in required" })
   when ["GET", "uploads"]
     # Local development storage. Production will use private, short-lived
     # object-storage URLs once authentication is in place.
+    user = current_user(db, req)
     key = parts[2].to_s
     path = File.expand_path(File.join(UPLOAD_DIR, key))
-    unless parts.length == 3 && key.match?(/\A[0-9a-f-]+\.(jpg|png|webp|pdf)\z/) && path.start_with?(UPLOAD_DIR + "/") && File.file?(path)
+    evidence_owner = (db["commitments"] || []).find do |c|
+      owner?(user, c) && (c["evidence"] || []).any? { |e| e["storageKey"] == key }
+    end
+    unless parts.length == 3 && evidence_owner && key.match?(/\A[0-9a-f-]+\.(jpg|png|webp|pdf)\z/) && path.start_with?(UPLOAD_DIR + "/") && File.file?(path)
       json(res, 404, { error: "evidence-not-found" })
       next
     end
@@ -247,15 +357,20 @@ server.mount_proc("/") do |req, res|
   when ["GET", "health"]
     json(res, 200, { ok: true, stage: 3 })
   when ["GET", "commitments"]
+    user = current_user(db, req)
+    unless user
+      json(res, 401, { error: "sign-in required" })
+      next
+    end
     if parts.length == 1
-      json(res, 200, db["commitments"].map { |c| commitment_view(c) })
+      json(res, 200, db["commitments"].select { |c| owner?(user, c) }.map { |c| commitment_view(c) })
     elsif parts.length == 2
-      c = find_commitment(db, parts[1])
+      c = find_owned_commitment(db, user, parts[1])
       c ? json(res, 200, commitment_view(c)) : json(res, 404, { error: "not-found" })
     elsif parts.length == 3 && parts[2] == "outcome"
       # Receipt (PRD §15): full breakdown + pinned rules version.
       # Net-aggregated so dispute reversals (Stage 6) are reflected.
-      c = find_commitment(db, parts[1])
+      c = find_owned_commitment(db, user, parts[1])
       if c.nil?
         json(res, 404, { error: "not-found" })
       elsif c["status"] != "settled"
@@ -359,9 +474,14 @@ server.mount_proc("/") do |req, res|
       json(res, 404, { error: "not-found" })
     end
   when ["POST", "commitments"]
+    actor = current_user(db, req)
+    unless actor
+      json(res, 401, { error: "sign-in required" })
+      next
+    end
     if parts.length == 3 && parts[2] == "exception"
       # Technical failure: pause deadline, flag for review (PRD §16).
-      c = find_commitment(db, parts[1])
+      c = find_owned_commitment(db, actor, parts[1])
       if c.nil?
         json(res, 404, { error: "not-found" })
       else
@@ -392,7 +512,7 @@ server.mount_proc("/") do |req, res|
       end
       c = {
         "id" => SecureRandom.uuid,
-        "userId" => "demo-user", # auth deferred (Stage 6); single-user scope for now
+        "userId" => actor["id"],
         "programmeId" => nil,
         "rulesVersion" => 1,
         "rules" => default_rules(body),
@@ -411,7 +531,7 @@ server.mount_proc("/") do |req, res|
       save_db(db)
       json(res, 201, commitment_view(c))
     elsif parts.length == 3 && parts[2] == "activate"
-      c = find_commitment(db, parts[1])
+      c = find_owned_commitment(db, actor, parts[1])
       if c.nil?
         json(res, 404, { error: "not-found" })
       elsif c["status"] != "draft"
@@ -422,7 +542,7 @@ server.mount_proc("/") do |req, res|
         json(res, 200, commitment_view(c))
       end
     elsif parts.length == 3 && parts[2] == "milestones"
-      c = find_commitment(db, parts[1])
+      c = find_owned_commitment(db, actor, parts[1])
       if c.nil?
         json(res, 404, { error: "not-found" })
       elsif body["title"].to_s.strip.empty?
@@ -434,7 +554,7 @@ server.mount_proc("/") do |req, res|
         json(res, 201, m)
       end
     elsif parts.length == 3 && parts[2] == "evidence"
-      c = find_commitment(db, parts[1])
+      c = find_owned_commitment(db, actor, parts[1])
       if c.nil?
         json(res, 404, { error: "not-found" })
       elsif c["status"] != "active"
@@ -457,7 +577,7 @@ server.mount_proc("/") do |req, res|
         end
       end
     elsif parts.length == 3 && parts[2] == "submit-for-verification"
-      c = find_commitment(db, parts[1])
+      c = find_owned_commitment(db, actor, parts[1])
       if c.nil?
         json(res, 404, { error: "not-found" })
       elsif c["status"] != "active"
@@ -469,7 +589,7 @@ server.mount_proc("/") do |req, res|
       end
     elsif parts.length == 3 && parts[2] == "verify"
       # Verification v0: self_attest | manual_review. Decision rows immutable.
-      c = find_commitment(db, parts[1])
+      c = find_owned_commitment(db, actor, parts[1])
       if c.nil?
         json(res, 404, { error: "not-found" })
       elsif c["status"] != "pending_verification"
@@ -479,7 +599,7 @@ server.mount_proc("/") do |req, res|
       elsif !%w[successful unsuccessful].include?(body["verdict"])
         json(res, 422, { error: "verdict must be successful or unsuccessful" })
       else
-        c["verifications"] << { "id" => SecureRandom.uuid, "method" => body["method"], "verdict" => body["verdict"], "reason" => body["reason"], "decidedBy" => "demo-user", "decidedAt" => Time.now.utc.iso8601 }
+        c["verifications"] << { "id" => SecureRandom.uuid, "method" => body["method"], "verdict" => body["verdict"], "reason" => body["reason"], "decidedBy" => actor["id"], "decidedAt" => Time.now.utc.iso8601 }
         c["status"] = body["verdict"]
         c["outcome"] = body["verdict"]
         save_db(db)
@@ -487,7 +607,7 @@ server.mount_proc("/") do |req, res|
       end
     elsif parts.length == 3 && parts[2] == "settle"
       # Simulated settlement (Stage 3). Idempotent: repeat returns existing.
-      c = find_commitment(db, parts[1])
+      c = find_owned_commitment(db, actor, parts[1])
       existing = c && latest_breakage(db, c["id"])
       if c.nil?
         json(res, 404, { error: "not-found" })
@@ -520,7 +640,7 @@ server.mount_proc("/") do |req, res|
     elsif parts.length == 3 && parts[2] == "rules"
       # Retrospective rule-edit guard (PRD §6.4): rules mutable in draft only.
       # POST (not PATCH) because WEBrick ProcHandler has no do_PATCH.
-      c = find_commitment(db, parts[1])
+      c = find_owned_commitment(db, actor, parts[1])
       if c.nil?
         json(res, 404, { error: "not-found" })
       elsif c["status"] != "draft"
@@ -532,7 +652,7 @@ server.mount_proc("/") do |req, res|
       end
     elsif parts.length == 5 && parts[2] == "milestones" && parts[4] == "toggle"
       id = parts[1]; mid = parts[3]
-      c = find_commitment(db, id)
+      c = find_owned_commitment(db, actor, id)
       m = c && c["milestones"].find { |x| x["id"] == mid }
       if m.nil?
         json(res, 404, { error: "not-found" })
