@@ -1,0 +1,16 @@
+{
+  "objective": "Complete data analytics certification",
+  "startsAt": "2026-10-01T00:00:00.000Z",
+  "endsAt": "2026-10-30T23:59:59.000Z",
+  "measurement": "Pass score >= 70% on final exam",
+  "evidenceRequired": ["certificate-pdf"],
+  "successCriteria": "Certificate uploaded and verified by 30 Oct",
+  "failureCriteria": "No verified certificate by deadline",
+  "stake": { "amount": 10000000, "currency": "NGN" },
+  "maxForfeiturePct": 50,
+  "rewardFormula": "return stake + pro-rata share of success pool",
+  "breakageSplit": { "successPct": 70, "platformPct": 20, "institutionPct": 10 },
+  "platformFees": "Disclosed 20% of forfeited amount; no hidden fees",
+  "exceptions": "Technical failure pauses deadline; reviewed case by case",
+  "disputeProcess": "Raise dispute within 7 days; re-review with correcting ledger entries"
+}

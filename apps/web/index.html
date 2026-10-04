@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Productjvity — Stage 2 MVP</title>
+<style>
+:root{--bg:#FAF8F5;--card:#fff;--ink:#1C1917;--mut:#78716C;--line:#E9E3DA;--ac:#5F4BE0;--acS:#EFEDFD;--r:18px;--sh:0 1px 2px rgba(28,25,23,.05),0 12px 32px -16px rgba(28,25,23,.18)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,-apple-system,"Segoe UI",Roboto,sans-serif}
+.app{display:flex;min-height:100vh}.side{width:220px;background:var(--card);border-right:1px solid var(--line);padding:26px 16px;position:sticky;top:0;height:100vh}
+.logo{display:flex;gap:10px;align-items:center;font-weight:800;font-size:18px;padding:0 10px 20px}.mark{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#6D5EF0,#4634C8);color:#fff;display:grid;place-items:center}
+.nav button{display:flex;width:100%;gap:10px;padding:11px 12px;border:0;border-radius:12px;color:var(--mut);font-size:14.5px;cursor:pointer;background:none;text-align:left}.nav button.on{background:var(--acS);color:var(--ink);font-weight:700}
+.main{flex:1;max-width:900px;margin:0 auto;padding:40px 32px 120px}.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--sh);padding:24px;margin:16px 0}
+.eyebrow{font-size:12px;letter-spacing:.12em;color:var(--mut);font-weight:700}h1{font-size:32px;letter-spacing:-.02em;margin:6px 0 2px}.sub{color:var(--mut);margin:0 0 16px}
+.bar{height:10px;background:#F4F1EC;border-radius:99px;overflow:hidden}.bar i{display:block;height:100%;background:linear-gradient(90deg,#6D5EF0,#4634C8)}
+.btn{border:0;border-radius:12px;padding:11px 18px;font-weight:700;font-size:14px;cursor:pointer}.btn-p{background:var(--ac);color:#fff}.btn-s{background:#fff;border:1px solid var(--line)}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}input,select{padding:11px;border:1px solid var(--line);border-radius:12px;font-size:14px;width:100%}
+.goal{border-top:1px solid var(--line)}.meta{font-size:12.5px;color:var(--mut)}
+.page{display:none}.page.on{display:block}.steps{display:flex;gap:6px;margin:12px 0}.steps i{flex:1;height:4px;border-radius:99px;background:#EDE8E0}.steps i.on{background:var(--ac)}
+#err{display:none;background:#FDE8E8;border:1px solid #E5A49C;border-radius:12px;padding:10px 14px;margin-bottom:12px;font-size:13.5px}
+.ver{font-size:11px;color:var(--mut);padding:0 10px}
+.pill{font-size:11.5px;font-weight:700;border-radius:99px;padding:3px 10px;background:var(--acS);color:var(--ac)}
+@media(max-width:820px){.side{display:none}}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="side"><div class="logo"><span class="mark">◍</span>Productjvity</div>
+<nav class="nav" id="nav">
+<button type="button" data-p="dash" class="on">⌂ Dashboard</button><button type="button" data-p="new">＋ New</button><button type="button" data-p="orgs">🏛 Orgs</button><button type="button" data-p="notes">✉ Notes</button><button type="button" data-p="profile">○ Profile</button>
+</nav><div class="ver">stage 4+5 · api-backed</div></aside>
+<main class="main">
+<div id="err"></div>
+<section class="page on" id="p-dash">
+<div class="eyebrow">DASHBOARD</div><h1>Commitments</h1><p class="sub" id="apiState">Connecting to API…</p>
+<div class="card" id="sumCard" style="display:none"><div class="eyebrow">Summary</div><p class="sub" id="sumText"></p></div>
+<div class="card" id="list"></div>
+<div class="card"><div class="eyebrow">Ledger (simulated)</div><p class="sub">Double-entry trail + breakage splits. Exports from the API.</p><a class="btn btn-s" href="/ledger.csv" download style="text-decoration:none">Download ledger.csv</a></div>
+</section>
+<section class="page" id="p-new">
+<div class="eyebrow">NEW COMMITMENT</div><h1 id="wTitle">What do you want to accomplish?</h1>
+<div class="card">
+<div class="steps"><i class="on" id="s1"></i><i id="s2"></i><i id="s3"></i><i id="s4"></i></div>
+<div id="w1"><input id="fGoal" placeholder="e.g. Finish certification"><div class="row"><button class="btn btn-p" data-w="2">Continue →</button></div></div>
+<div id="w2" style="display:none"><input id="fCrit" placeholder="Success criteria (e.g. certificate by 30 Oct)"><div class="row"><button class="btn btn-s" data-w="1">← Back</button><button class="btn btn-p" data-w="3">Continue →</button></div></div>
+<div id="w3" style="display:none"><input id="fDate" type="date"><input id="fStake" type="number" min="0" placeholder="Stake amount, minor units (0 = no money)"><div class="row"><button class="btn btn-s" data-w="2">← Back</button><button class="btn btn-p" data-w="4">Review →</button></div></div>
+<div id="w4" style="display:none"><p class="sub" id="review"></p><div class="row"><button class="btn btn-s" data-w="3">← Back</button><button class="btn btn-p" id="create">Accept + Create (draft)</button></div></div>
+</div>
+<div class="card" id="afterCreate" style="display:none"></div>
+</section>
+<section class="page" id="p-discover">
+<div class="eyebrow">DISCOVER</div><h1>Programmes</h1><p class="sub">Institutional programmes land in Stage 4. For now: personal commitments.</p>
+<div class="card"><b>30-day starter challenge</b><p class="sub">Template preview — enrolment opens in Stage 4.</p></div>
+</section>
+<section class="page" id="p-detail">
+<div class="eyebrow">COMMITMENT</div><h1 id="dTitle">—</h1><p class="sub" id="dMeta"></p>
+<div class="card" id="dBody"></div>
+</section>
+<section class="page" id="p-orgs">
+<div class="eyebrow">INSTITUTIONS</div><h1>Organisations</h1><p class="sub">Create institutions and cohort programmes (Stage 4).</p>
+<div class="card"><div class="eyebrow">New institution</div><div class="row"><input id="iName" placeholder="e.g. Demo Church" style="flex:1;min-width:160px"><button type="button" class="btn btn-p" id="iCreate">Create</button></div></div>
+<div class="card" id="orgList"></div>
+</section>
+<section class="page" id="p-prog">
+<div class="eyebrow">PROGRAMME</div><h1 id="gTitle">—</h1><p class="sub" id="gMeta"></p>
+<div class="card" id="gBody"></div>
+</section>
+<section class="page" id="p-notes">
+<div class="eyebrow">NOTIFICATIONS</div><h1>Notes</h1><p class="sub">Reminders, verification, completion, rewards (Stage 5).</p>
+<div class="card"><div class="row"><button type="button" class="btn btn-p" id="runRem">Run reminders scan</button></div></div>
+<div class="card" id="noteList"></div>
+</section>
+<section class="page" id="p-profile">
+<div class="eyebrow">PROFILE</div><h1>History & consent</h1><p class="sub">Accountability profile, gated by consent (Stage 5).</p>
+<div class="card"><label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="consentBox" style="width:auto"> Make my profile public</label></div>
+<div class="card" id="histBox"></div>
+</section>
+</main></div>
+<script>
+(function(){
+"use strict";
+var API = ""; // same-origin: page is served by the API server itself
+var errBox = document.getElementById("err");
+function err(m){ errBox.style.display="block"; errBox.textContent=m; }
+function $(id){ return document.getElementById(id); }
+function call(method, path, body){
+  // Always send a JSON body on POST: Firefox omits Content-Length for
+  // bodyless fetch POSTs and WEBrick answers 411 (curl sends 0, hiding this).
+  var opts = {method:method,headers:{"Content-Type":"application/json"}};
+  opts.body = (method==="POST") ? JSON.stringify(body||{}) : (body?JSON.stringify(body):undefined);
+  return fetch(API+path,opts)
+    .then(function(r){ return r.json().then(function(j){ return {status:r.status,body:j}; }); });
+}
+function go(p){
+  var ps=document.querySelectorAll(".page"); for(var i=0;i<ps.length;i++) ps[i].classList.remove("on");
+  var map={dash:"p-dash",new:"p-new",discover:"p-discover",detail:"p-detail",orgs:"p-orgs",prog:"p-prog",notes:"p-notes",profile:"p-profile"};
+  $(map[p]||"p-dash").classList.add("on");
+  var bs=document.querySelectorAll("#nav button"); for(var j=0;j<bs.length;j++) bs[j].classList.toggle("on",bs[j].getAttribute("data-p")===p);
+  if(p==="dash") load();
+  if(p==="orgs") loadOrgs();
+  if(p==="notes") loadNotes();
+  if(p==="profile") loadProfile();
+}
+var navs=document.querySelectorAll("#nav button");
+for(var n=0;n<navs.length;n++)(function(b){b.addEventListener("click",function(){go(b.getAttribute("data-p"));});})(navs[n]);
+function load(){
+  call("GET","/dashboard/summary").then(function(s){
+    if(s.status===200){ var d=s.body;
+      $("sumCard").style.display="block";
+      $("sumText").textContent="Active "+d.active+" · Completed "+d.completed+" · Rate "+d.completionRate+"% · Committed "+d.committed+" · Returned "+d.returned+" · Forfeited "+d.forfeited+" · Notes "+d.notifications;
+    }
+  });
+  call("GET","/commitments").then(function(r){
+    if(r.status!==200){ err("API error "+r.status+": "+JSON.stringify(r.body)); return; }
+    $("apiState").textContent = r.body.length+" commitment(s) · API connected";
+    var L=$("list"); L.innerHTML = r.body.length?"":"<p class='sub'>None yet — create one under New.</p>";
+    r.body.forEach(function(c){
+      var d=document.createElement("div"); d.style.cssText="padding:12px 0;border-top:1px solid var(--line)";
+      var b=document.createElement("button"); b.type="button"; b.className="btn btn-s";
+      b.textContent="Open → "; b.style.marginLeft="8px";
+      b.onclick=function(){ openDetail(c.id); };
+      var t=document.createElement("div");
+      t.innerHTML="<b></b> <span class='pill'></span><div class='meta'></div><div class='bar' style='margin-top:8px'><i style='width:0%'></i></div>";
+      t.querySelector("b").textContent=c.objective;
+      t.querySelector(".pill").textContent=c.status;
+      t.querySelector(".meta").textContent=(c.progressPct||0)+"% · due "+(c.deadline||"—");
+      t.querySelector(".bar i").style.width=(c.progressPct||0)+"%";
+      d.appendChild(t); d.appendChild(b); L.appendChild(d);
+    });
+  }).catch(function(e){ err("Cannot reach API at "+API+" — is ruby apps/api/server.rb running? ("+e+")"); });
+}
+function openDetail(id){
+  call("GET","/commitments/"+id).then(function(r){
+    var c=r.body; $("dTitle").textContent=c.objective;
+    $("dMeta").textContent=c.status+" · rules v"+c.rulesVersion+" (pinned) · "+(c.progressPct||0)+"%";
+    var B=$("dBody"); B.innerHTML="";
+    function btn(label,fn,primary){ var b=document.createElement("button"); b.type="button"; b.className="btn "+(primary?"btn-p":"btn-s"); b.textContent=label; b.onclick=fn; return b; }
+    var row=document.createElement("div"); row.className="row";
+    if(c.status==="draft") row.appendChild(btn("Activate (pin rules)",function(){ call("POST","/commitments/"+id+"/activate").then(function(){openDetail(id);load();}); },true));
+    if(c.status==="active") row.appendChild(btn("Submit for verification",function(){ call("POST","/commitments/"+id+"/submit-for-verification").then(function(){openDetail(id);load();}); },true));
+    if(c.status==="successful"||c.status==="unsuccessful") row.appendChild(btn("Settle (simulated money)",function(){ call("POST","/commitments/"+id+"/settle").then(function(){openDetail(id);load();}); },true));
+    if(c.status==="settled"){
+      call("GET","/commitments/"+id+"/outcome").then(function(r){
+        if(r.status!==200) return;
+        var o=r.body, d=document.createElement("div");
+        d.style.cssText="background:var(--acS);border-radius:12px;padding:14px;margin-top:12px;font-size:13.5px";
+        d.innerHTML="<b>Outcome receipt</b> · rules v"+o.rulesVersion+"<br>Committed "+o.committed+" · At-risk "+o.atRisk+" · Returned "+o.returned+" · Forfeited "+o.forfeited+"<br>Split → success pool "+o.allocation.toSuccessPool+" · platform "+o.allocation.toPlatform+" · institution "+o.allocation.toInstitution;
+        B.appendChild(d);
+      });
+    }
+    if(c.status==="pending_verification"){
+      row.appendChild(btn("Verify: successful (self-attest)",function(){ call("POST","/commitments/"+id+"/verify",{method:"self_attest",verdict:"successful"}).then(function(){openDetail(id);load();}); },true));
+      row.appendChild(btn("Verify: unsuccessful",function(){ call("POST","/commitments/"+id+"/verify",{method:"self_attest",verdict:"unsuccessful"}).then(function(){openDetail(id);load();}); }));
+    }
+    B.appendChild(row);
+    var mh=document.createElement("h3"); mh.textContent="Milestones"; B.appendChild(mh);
+    c.milestones.forEach(function(m){
+      var l=document.createElement("label"); l.style.cssText="display:flex;gap:8px;padding:4px 0";
+      var cb=document.createElement("input"); cb.type="checkbox"; cb.checked=!!m.done; cb.style.width="auto";
+      cb.onchange=function(){ call("POST","/commitments/"+id+"/milestones/"+m.id+"/toggle",{done:cb.checked}).then(function(){openDetail(id);load();}); };
+      var sp=document.createElement("span"); sp.textContent=m.title;
+      l.appendChild(cb); l.appendChild(sp); B.appendChild(l);
+    });
+    var mr=document.createElement("div"); mr.className="row";
+    var mi=document.createElement("input"); mi.placeholder="New milestone"; mi.style.cssText="flex:1;min-width:140px";
+    var mb=document.createElement("button"); mb.type="button"; mb.className="btn btn-s"; mb.textContent="Add";
+    mb.onclick=function(){ if(!mi.value.trim())return; call("POST","/commitments/"+id+"/milestones",{title:mi.value.trim()}).then(function(){openDetail(id);load();}); };
+    mr.appendChild(mi); mr.appendChild(mb); B.appendChild(mr);
+    var eh=document.createElement("h3"); eh.textContent="Evidence"; B.appendChild(eh);
+    c.evidence.forEach(function(e){
+      var p=document.createElement("div"); p.className="meta";
+      if(e.fileUrl){ var a=document.createElement("a"); a.href=e.fileUrl; a.target="_blank"; a.rel="noopener"; a.textContent="• "+e.fileName; p.appendChild(a); }
+      else { p.textContent="• "+e.fileName; }
+      if(e.note){ p.appendChild(document.createTextNode(" — "+e.note)); }
+      B.appendChild(p);
+    });
+    var help=document.createElement("p"); help.className="meta"; help.textContent="Upload a JPG, PNG, WebP, or PDF (maximum 5 MB)."; B.appendChild(help);
+    var er=document.createElement("div"); er.className="row";
+    var fi=document.createElement("input"); fi.type="file"; fi.accept="image/jpeg,image/png,image/webp,application/pdf"; fi.style.cssText="flex:1;min-width:180px";
+    var ni=document.createElement("input"); ni.placeholder="Short note (optional)"; ni.style.cssText="flex:1;min-width:140px";
+    var eb=document.createElement("button"); eb.type="button"; eb.className="btn btn-s"; eb.textContent="Upload proof";
+    eb.onclick=function(){
+      var file=fi.files && fi.files[0];
+      if(!file){ err("Choose a proof file first."); return; }
+      if(["image/jpeg","image/png","image/webp","application/pdf"].indexOf(file.type)===-1){ err("Use a JPG, PNG, WebP, or PDF file."); return; }
+      if(file.size>5*1024*1024){ err("Proof files must be 5 MB or smaller."); return; }
+      var reader=new FileReader(); eb.disabled=true; eb.textContent="Uploading…";
+      reader.onerror=function(){ eb.disabled=false; eb.textContent="Upload proof"; err("That file could not be read."); };
+      reader.onload=function(){
+        var data=String(reader.result).split(",",2)[1];
+        call("POST","/commitments/"+id+"/evidence",{fileName:file.name,contentType:file.type,dataBase64:data,note:ni.value.trim()}).then(function(r){
+          if(r.status!==201){ eb.disabled=false; eb.textContent="Upload proof"; err("Upload failed: "+(r.body.error||"please try again")); return; }
+          openDetail(id); load();
+        }).catch(function(){ eb.disabled=false; eb.textContent="Upload proof"; err("Upload failed. Please try again."); });
+      };
+      reader.readAsDataURL(file);
+    };
+    er.appendChild(fi); er.appendChild(ni); er.appendChild(eb); B.appendChild(er);
+    var vh=document.createElement("h3"); vh.textContent="Verification history (immutable)"; B.appendChild(vh);
+    (c.verifications||[]).forEach(function(v){ var p=document.createElement("div"); p.className="meta"; p.textContent=v.method+" → "+v.verdict+" @ "+v.decidedAt; B.appendChild(p); });
+    go("detail");
+  });
+}
+// wizard
+var ws=document.querySelectorAll("[data-w]");
+for(var w=0;w<ws.length;w++)(function(b){b.addEventListener("click",function(){ wiz(b.getAttribute("data-w")); });})(ws[w]);
+function wiz(s){
+  ["w1","w2","w3","w4"].forEach(function(id,x){ $(id).style.display=(x+1===+s)?"block":"none"; $("s"+(x+1)).classList.toggle("on",x+1<=+s); });
+  var titles={1:"What do you want to accomplish?",2:"What does success look like?",3:"Deadline + stake",4:"Review + accept rules"};
+  $("wTitle").textContent=titles[s];
+  if(s==="4") $("review").textContent="Goal: "+$("fGoal").value+" · Success: "+($("fCrit").value||"(default)")+" · Deadline: "+$("fDate").value+" · Stake: "+($("fStake").value||0)+" (simulated, no money in Stage 2)";
+}
+$("create").addEventListener("click",function(){
+  call("POST","/commitments",{objective:$("fGoal").value,successCriteria:$("fCrit").value,deadline:$("fDate").value,stakeAmount:+($("fStake").value||0)}).then(function(r){
+    if(r.status!==201){ err("Create failed ("+r.status+"): "+JSON.stringify(r.body)); return; }
+    var box=$("afterCreate"); box.style.display="block";
+    box.innerHTML="";
+    var p=document.createElement("p"); p.className="sub"; p.textContent="Draft "+r.body.id+" created. Activate to pin rules, then add milestones.";
+    var b=document.createElement("button"); b.type="button"; b.className="btn btn-p"; b.textContent="Activate now";
+    b.onclick=function(){ call("POST","/commitments/"+r.body.id+"/activate").then(function(){ openDetail(r.body.id); load(); }); };
+    box.appendChild(p); box.appendChild(b);
+    load();
+  }).catch(function(e){ err("Create failed: "+e); });
+});
+// --- Stage 4: orgs & programmes ---
+$("iCreate").addEventListener("click",function(){
+  var n=$("iName").value.trim(); if(!n){$("iName").focus();return;}
+  call("POST","/institutions",{name:n}).then(function(){ $("iName").value=""; loadOrgs(); });
+});
+function loadOrgs(){
+  call("GET","/institutions").then(function(r){
+    var L=$("orgList"); L.innerHTML=r.body.length?"":"<p class='sub'>No institutions yet.</p>";
+    r.body.forEach(function(inst){
+      var d=document.createElement("div"); d.style.cssText="padding:12px 0;border-top:1px solid var(--line)";
+      d.innerHTML="<b></b> <span class='meta'></span><div class='row progRow'></div><div class='row'><input placeholder='New programme name' style='flex:1;min-width:140px'><button type='button' class='btn btn-s'>+ Programme (default rules)</button></div>";
+      d.querySelector("b").textContent=inst.name;
+      d.querySelector(".meta").textContent=inst.status+" · "+inst.id.slice(0,8);
+      var inp=d.querySelector("input"), pr=d.querySelector(".progRow");
+      d.querySelector("button").onclick=function(){
+        if(!inp.value.trim()){inp.focus();return;}
+        var rules={objective:inp.value.trim(),startsAt:"2026-10-01T00:00:00.000Z",endsAt:"2026-10-31T23:59:59.000Z",measurement:"task completion",evidenceRequired:[],successCriteria:"complete by deadline",failureCriteria:"incomplete at deadline",stake:{amount:0,currency:"NGN"},maxForfeiturePct:0,rewardFormula:"points",breakageSplit:{successPct:70,platformPct:20,institutionPct:10},platformFees:"none",exceptions:"none",disputeProcess:"contact support"};
+        call("POST","/programmes",{institutionId:inst.id,name:inp.value.trim(),rules:rules}).then(function(r2){
+          if(r2.status!==201){ err("Programme failed: "+JSON.stringify(r2.body)); return; }
+          loadOrgs();
+        });
+      };
+      call("GET","/programmes").then(function(rp){
+        (rp.body||[]).filter(function(p){return p.institutionId===inst.id;}).forEach(function(p){
+          var b=document.createElement("button"); b.type="button"; b.className="btn btn-s";
+          b.textContent=p.name+" · v"+p.currentVersion+" · "+p.results.completionRate+"%";
+          b.onclick=function(){ openProg(p.id); };
+          pr.appendChild(b);
+        });
+      });
+      L.appendChild(d);
+    });
+  });
+}
+function openProg(id){
+  call("GET","/programmes/"+id).then(function(r){
+    var p=r.body; $("gTitle").textContent=p.name;
+    $("gMeta").textContent="rules v"+p.currentVersion+" · "+p.status+" · "+p.visibility;
+    var B=$("gBody"); B.innerHTML="";
+    function btn(label,fn,primary){ var b=document.createElement("button"); b.type="button"; b.className="btn "+(primary?"btn-p":"btn-s"); b.textContent=label; b.onclick=fn; return b; }
+    var row=document.createElement("div"); row.className="row";
+    row.appendChild(btn("Enrol me (accept v"+p.currentVersion+")",function(){
+      call("POST","/programmes/"+id+"/enrol",{acceptedRulesVersion:p.currentVersion}).then(function(r2){
+        if(r2.status!==201){ err("Enrol failed ("+r2.status+"): "+JSON.stringify(r2.body)); return; }
+        openDetail(r2.body.id);
+      });
+    },true));
+    row.appendChild(btn("Suspend",function(){ call("POST","/programmes/"+id+"/suspend").then(function(){openProg(id);}); }));
+    row.appendChild(btn("Cycle visibility",function(){
+      var nx=p.visibility==="aggregate"?"public":"aggregate";
+      call("POST","/programmes/"+id+"/visibility",{visibility:nx}).then(function(){openProg(id);});
+    }));
+    B.appendChild(row);
+    call("GET","/programmes/"+id+"/results").then(function(r2){
+      var t=r2.body, d=document.createElement("p"); d.className="sub";
+      d.textContent="Participants "+t.participants+" · "+t.successful+" ok / "+t.unsuccessful+" failed · rate "+t.completionRate+"% · committed "+t.committed+" · returned "+t.returned+" · forfeited "+t.forfeited+" · pool "+t.toSuccessPool+" / platform "+t.toPlatform+" / inst "+t.toInstitution;
+      B.appendChild(d);
+    });
+    call("GET","/programmes/"+id+"/leaderboard").then(function(r3){
+      var h=document.createElement("h3"); h.textContent="Leaderboard ("+(r3.body.mode||"?")+")"; B.appendChild(h);
+      var d=document.createElement("div"); d.className="meta";
+      if(r3.body.rows) d.textContent=r3.body.rows.map(function(x){return x.user+" "+x.progressPct+"%";}).join(" · ");
+      else d.textContent=r3.body.participants+" participants · avg "+r3.body.avgProgress+"% · done "+r3.body.completed;
+      B.appendChild(d);
+    });
+    go("prog");
+  });
+}
+// --- Stage 5: notes & profile ---
+$("runRem").addEventListener("click",function(){
+  call("POST","/notifications/send-reminders").then(function(r){ loadNotes(); });
+});
+function loadNotes(){
+  call("GET","/notifications").then(function(r){
+    var L=$("noteList"); L.innerHTML=(r.body&&r.body.length)?"":"<p class='sub'>No notifications. Run the scan or settle a commitment.</p>";
+    (r.body||[]).forEach(function(n){
+      var d=document.createElement("div"); d.className="meta"; d.style.padding="6px 0";
+      d.textContent=n.template+" · "+(n.commitmentId||"").slice(0,8)+" · "+n.sentAt;
+      L.appendChild(d);
+    });
+  });
+}
+$("consentBox").addEventListener("change",function(){
+  call("POST","/users/demo-user/consent",{consentProfilePublic:$("consentBox").checked}).then(function(){ loadProfile(); });
+});
+function loadProfile(){
+  call("GET","/users/demo-user/history").then(function(r){
+    var B=$("histBox"); B.innerHTML="";
+    if(r.status!==200){ B.textContent="history unavailable"; return; }
+    var s=r.body.stats, d=document.createElement("p"); d.className="sub";
+    d.textContent=r.body.user.name+" · "+s.commitments+" commitments · "+s.successful+" successful · "+s.completionRate+"%";
+    B.appendChild(d);
+    $("consentBox").checked=false;
+    call("GET","/users").then(function(ru){
+      var me=(ru.body||[]).find(function(u){return u.id==="demo-user";});
+      if(me) $("consentBox").checked=!!me.consentProfilePublic;
+    });
+  });
+}
+load();
+})();
+</script>
+</body>
+</html>

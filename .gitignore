@@ -3,3 +3,6 @@
 .env.*
 !.env.example
 node_modules/
+data/db.json
+uploads/
+*.log

@@ -1,0 +1,220 @@
+// Productjvity — Prisma schema (Phase 1, §3.4)
+// DB: PostgreSQL via Postgres.app locally. Run: prisma migrate dev
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  user
+  institution_admin
+  platform_admin
+}
+
+enum ProgrammeStatus {
+  draft
+  active
+  suspended
+  closed
+}
+
+enum CommitmentStatus {
+  draft
+  active
+  pending_verification
+  successful
+  unsuccessful
+  settled
+  disputed
+}
+
+enum LedgerType {
+  hold
+  return
+  forfeit
+  reward
+  fee
+}
+
+enum DisputeStatus {
+  open
+  under_review
+  resolved
+  rejected
+}
+
+model User {
+  id                    String         @id @default(cuid())
+  email                 String         @unique
+  name                  String
+  role                  Role           @default(user)
+  consentProfilePublic  Boolean        @default(false)
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  institutionsOwned     Institution[]  @relation("InstitutionOwner")
+  commitments           Commitment[]
+  disputes              Dispute[]      @relation("DisputeReporter")
+  notifications         Notification[]
+  auditLogs             AuditLog[]     @relation("AuditActor")
+  verificationDecisions VerificationDecision[]
+}
+
+model Institution {
+  id        String            @id @default(cuid())
+  name      String
+  status    ProgrammeStatus   @default(active)
+  ownerId   String
+  owner     User              @relation("InstitutionOwner", fields: [ownerId], references: [id])
+  programmes Programme[]
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+}
+
+model Programme {
+  id            String            @id @default(cuid())
+  institutionId String?
+  institution   Institution?      @relation(fields: [institutionId], references: [id])
+  name          String
+  objective     String
+  startsAt      DateTime
+  endsAt        DateTime
+  eligibility   Json              @default("{}")
+  status        ProgrammeStatus   @default(draft)
+  rules         ProgrammeRules[]
+  commitments   Commitment[]
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+}
+
+model ProgrammeRules {
+  id            String    @id @default(cuid())
+  programmeId   String
+  programme     Programme @relation(fields: [programmeId], references: [id])
+  version       Int
+  rules         Json
+  rulesHash     String
+  effectiveFrom DateTime  @default(now())
+
+  @@unique([programmeId, version])
+}
+
+model Commitment {
+  id            String           @id @default(cuid())
+  userId        String
+  user          User             @relation(fields: [userId], references: [id])
+  programmeId   String?
+  programme     Programme?       @relation(fields: [programmeId], references: [id])
+  rulesVersion  Int              @default(1)
+  objective     String
+  deadline      DateTime
+  stakeAmount   Int              @default(0) // minor units (kobo/cents)
+  currency      String           @default("NGN")
+  status        CommitmentStatus @default(draft)
+  outcome       String?
+  milestones    Milestone[]
+  evidence      Evidence[]
+  verifications VerificationDecision[]
+  ledger        LedgerEntry[]
+  breakage      BreakageAllocation[]
+  disputes      Dispute[]
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+}
+
+model Milestone {
+  id           String     @id @default(cuid())
+  commitmentId String
+  commitment   Commitment @relation(fields: [commitmentId], references: [id])
+  title        String
+  dueAt        DateTime?
+  required     Boolean    @default(true)
+  done         Boolean    @default(false)
+  createdAt    DateTime   @default(now())
+}
+
+model Evidence {
+  id           String     @id @default(cuid())
+  commitmentId String
+  commitment   Commitment @relation(fields: [commitmentId], references: [id])
+  milestoneId  String?
+  fileUrl      String
+  note         String?
+  submittedAt  DateTime   @default(now())
+}
+
+model VerificationDecision {
+  id           String     @id @default(cuid())
+  commitmentId String
+  commitment   Commitment @relation(fields: [commitmentId], references: [id])
+  method       String
+  verdict      String
+  reason       String?
+  decidedById  String?
+  decidedBy    User?      @relation(fields: [decidedById], references: [id])
+  decidedAt    DateTime   @default(now())
+
+  // Immutable by convention: no updates, only new rows. Enforced in API layer.
+}
+
+model LedgerEntry {
+  id             String     @id @default(cuid())
+  commitmentId   String
+  commitment     Commitment @relation(fields: [commitmentId], references: [id])
+  type           LedgerType
+  amount         Int
+  currency       String     @default("NGN")
+  idempotencyKey String     @unique
+  createdAt      DateTime   @default(now())
+
+  @@index([commitmentId, type])
+}
+
+model BreakageAllocation {
+  id             String     @id @default(cuid())
+  commitmentId   String
+  commitment     Commitment @relation(fields: [commitmentId], references: [id])
+  toSuccessPool  Int
+  toPlatform     Int
+  toInstitution  Int        @default(0)
+  createdAt      DateTime   @default(now())
+}
+
+model Dispute {
+  id           String        @id @default(cuid())
+  commitmentId String
+  commitment   Commitment    @relation(fields: [commitmentId], references: [id])
+  reporterId   String?
+  reporter     User?         @relation("DisputeReporter", fields: [reporterId], references: [id])
+  reason       String
+  status       DisputeStatus @default(open)
+  resolution   String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  template  String
+  payload   Json     @default("{}")
+  sentAt    DateTime @default(now())
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actor      User?    @relation("AuditActor", fields: [actorId], references: [id])
+  action     String
+  targetType String
+  targetId   String
+  diff       Json     @default("{}")
+  createdAt  DateTime @default(now())
+
+  @@index([targetType, targetId])
+}
