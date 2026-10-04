@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createHash } from "node:crypto";
 import { pool } from "./database.js";
 
 const here = resolve(fileURLToPath(new URL(".", import.meta.url)));
@@ -105,11 +106,17 @@ async function main() {
       for (const [index, evidence] of (commitment.evidence || []).entries()) {
         const evidenceId = evidence.id || `${commitment.id}:evidence:${index}`;
         const storageKey = evidence.storageKey || `legacy-${evidenceId}`;
+        // Original filename-only evidence has no file hash. Derive a stable,
+        // unique placeholder so it can coexist with other legacy records while
+        // retaining real SHA-256 values when they exist.
+        const evidenceHash = evidence.sha256 || createHash("sha256")
+          .update(`legacy-evidence:${commitment.id}:${evidenceId}`)
+          .digest("hex");
         await insert(client, `insert into evidence (id,commitment_id,milestone_id,storage_key,file_url,content_type,size_bytes,sha256,note,submitted_at)
           values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) on conflict (id) do nothing`, [
           evidenceId, commitment.id, evidence.milestoneId || null, storageKey,
           evidence.fileUrl || `/legacy-evidence/${evidenceId}`, evidence.contentType || "application/octet-stream",
-          evidence.sizeBytes || 0, evidence.sha256 || "0".repeat(64), evidence.note || evidence.fileName || null, timestamp(evidence.submittedAt)
+          evidence.sizeBytes || 0, evidenceHash, evidence.note || evidence.fileName || null, timestamp(evidence.submittedAt)
         ]);
         add("evidence");
       }
