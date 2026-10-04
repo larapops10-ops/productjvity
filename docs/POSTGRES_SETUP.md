@@ -1,6 +1,6 @@
 # PostgreSQL setup
 
-The local development database is named `productjvity`. After starting Postgres.app, apply the initial schema:
+The local development database is named `productjvity`. After starting Postgres.app, apply the database migrations:
 
 ```sh
 cd "/Users/lara/Documents/Codex/2026-10-04/co/Productjvity Build"

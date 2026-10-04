@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { pool } from "./database.js";
 import { buildSettlement } from "./settlement.js";
+import { queueAiAssistedReview } from "./ai-review.js";
 
 const PASSWORD_ITERATIONS = 210_000;
 const SESSION_LIFETIME_SECONDS = 60 * 60 * 24 * 14;
@@ -266,6 +267,11 @@ export async function handlePostgresApi(req, res, url, send) {
     if (commitment.status !== "active") return send(409, { error: "evidence can only be added while a commitment is active", status: commitment.status });
     const saved = await saveEvidence(await readJson(req), commitment.id);
     return saved.error ? send(422, { error: saved.error }) : send(201, saved.evidence);
+  }
+  if (method === "POST" && path[2] === "evidence" && path[4] === "ai-review") {
+    const evidence = (await pool.query("select * from evidence where id=$1 and commitment_id=$2", [path[3], commitment.id])).rows[0];
+    if (!evidence) return send(404, { error: "evidence-not-found" });
+    return send(202, await queueAiAssistedReview({ evidence, commitmentId: commitment.id }));
   }
   if (method === "POST" && path[2] === "milestones" && path[4] === "toggle") {
     const body = await readJson(req);
