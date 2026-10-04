@@ -35,7 +35,7 @@
 <div class="eyebrow">TODAY</div><h1>A little progress goes a long way.</h1><p class="sub" id="apiState">Getting your goals ready…</p>
 <div class="card" id="sumCard" style="display:none"><div class="eyebrow">Summary</div><p class="sub" id="sumText"></p></div>
 <div class="card" id="list"></div>
-<div class="card"><div class="eyebrow">Ledger (simulated)</div><p class="sub">Double-entry trail + breakage splits. Exports from the API.</p><a class="btn btn-s" href="/ledger.csv" download style="text-decoration:none">Download ledger.csv</a></div>
+<div class="card"><div class="eyebrow">YOUR PROGRESS</div><p class="sub">A simple record of the goals you have worked on.</p></div>
 </section>
 <section class="page" id="p-new">
 <div class="eyebrow">NEW GOAL</div><h1 id="wTitle">What would you like to make progress on?</h1>
@@ -49,7 +49,7 @@
 <div class="card" id="afterCreate" style="display:none"></div>
 </section>
 <section class="page" id="p-discover">
-<div class="eyebrow">DISCOVER</div><h1>Programmes</h1><p class="sub">Institutional programmes land in Stage 4. For now: personal commitments.</p>
+<div class="eyebrow">EXPLORE</div><h1>Shared goals</h1><p class="sub">Work towards something meaningful with your group.</p>
 <div class="card"><b>30-day starter challenge</b><p class="sub">Template preview — enrolment opens in Stage 4.</p></div>
 </section>
 <section class="page" id="p-detail">
@@ -57,8 +57,8 @@
 <div class="card" id="dBody"></div>
 </section>
 <section class="page" id="p-orgs">
-<div class="eyebrow">INSTITUTIONS</div><h1>Organisations</h1><p class="sub">Create institutions and cohort programmes (Stage 4).</p>
-<div class="card"><div class="eyebrow">New institution</div><div class="row"><input id="iName" placeholder="e.g. Demo Church" style="flex:1;min-width:160px"><button type="button" class="btn btn-p" id="iCreate">Create</button></div></div>
+<div class="eyebrow">GROUPS</div><h1>Goals are better together.</h1><p class="sub">Create a shared space for your church, school, team, or friends.</p>
+<div class="card"><div class="eyebrow">NEW GROUP</div><div class="row"><input id="iName" placeholder="e.g. Book club" style="flex:1;min-width:160px"><button type="button" class="btn btn-p" id="iCreate">Create group</button></div></div>
 <div class="card" id="orgList"></div>
 </section>
 <section class="page" id="p-prog">
@@ -66,13 +66,13 @@
 <div class="card" id="gBody"></div>
 </section>
 <section class="page" id="p-notes">
-<div class="eyebrow">NOTIFICATIONS</div><h1>Notes</h1><p class="sub">Reminders, verification, completion, rewards (Stage 5).</p>
-<div class="card"><div class="row"><button type="button" class="btn btn-p" id="runRem">Run reminders scan</button></div></div>
+<div class="eyebrow">UPDATES</div><h1>A gentle nudge when you need it.</h1><p class="sub">A quiet place for reminders and good news.</p>
+<div class="card"><div class="row"><button type="button" class="btn btn-p" id="runRem">Check for reminders</button></div></div>
 <div class="card" id="noteList"></div>
 </section>
 <section class="page" id="p-profile">
-<div class="eyebrow">PROFILE</div><h1>History & consent</h1><p class="sub">Accountability profile, gated by consent (Stage 5).</p>
-<div class="card"><label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="consentBox" style="width:auto"> Make my profile public</label></div>
+<div class="eyebrow">MY PROGRESS</div><h1>Every step counts.</h1><p class="sub">Look back at what you have made progress on.</p>
+<div class="card"><label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="consentBox" style="width:auto"> Let others see my progress</label></div>
 <div class="card" id="histBox"></div>
 </section>
 <section class="page" id="p-account">
