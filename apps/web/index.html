@@ -187,7 +187,19 @@ function openDetail(id){
     var eh=document.createElement("h3"); eh.textContent="Evidence"; B.appendChild(eh);
     c.evidence.forEach(function(e){
       var p=document.createElement("div"); p.className="meta";
-      if(e.fileUrl){ var a=document.createElement("a"); a.href=e.fileUrl; a.target="_blank"; a.rel="noopener"; a.textContent="• "+e.fileName; p.appendChild(a); }
+      if(e.fileUrl){
+        var a=document.createElement("a"); a.href=e.fileUrl; a.textContent="• "+e.fileName;
+        a.onclick=(function(url){ return function(event){
+          if(!authToken) return;
+          event.preventDefault();
+          var preview=window.open("about:blank","_blank");
+          fetch(url,{headers:{Authorization:"Bearer "+authToken}}).then(function(response){
+            if(!response.ok) throw new Error("Proof could not be opened");
+            return response.blob();
+          }).then(function(blob){ if(preview) preview.location=URL.createObjectURL(blob); }).catch(function(error){ if(preview) preview.close(); err(error.message); });
+        }; })(e.fileUrl);
+        p.appendChild(a);
+      }
       else { p.textContent="• "+e.fileName; }
       if(e.note){ p.appendChild(document.createTextNode(" — "+e.note)); }
       B.appendChild(p);
