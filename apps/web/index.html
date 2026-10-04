@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Productjvity — Stage 2 MVP</title>
+<title>Productjvity — Make steady progress</title>
 <style>
-:root{--bg:#FAF8F5;--card:#fff;--ink:#1C1917;--mut:#78716C;--line:#E9E3DA;--ac:#5F4BE0;--acS:#EFEDFD;--r:18px;--sh:0 1px 2px rgba(28,25,23,.05),0 12px 32px -16px rgba(28,25,23,.18)}
+:root{--bg:#F7F6F1;--card:#fff;--ink:#26302B;--mut:#747B75;--line:#E4E5DE;--ac:#58735F;--acS:#E8F0E9;--r:20px;--sh:0 2px 4px rgba(29,42,33,.04),0 16px 38px -20px rgba(29,42,33,.2)}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,-apple-system,"Segoe UI",Roboto,sans-serif}
 .app{display:flex;min-height:100vh}.side{width:220px;background:var(--card);border-right:1px solid var(--line);padding:26px 16px;position:sticky;top:0;height:100vh}
 .logo{display:flex;gap:10px;align-items:center;font-weight:800;font-size:18px;padding:0 10px 20px}.mark{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#6D5EF0,#4634C8);color:#fff;display:grid;place-items:center}
@@ -27,22 +27,22 @@
 <div class="app">
 <aside class="side"><div class="logo"><span class="mark">◍</span>Productjvity</div>
 <nav class="nav" id="nav">
-<button type="button" data-p="dash" class="on">⌂ Dashboard</button><button type="button" data-p="new">＋ New</button><button type="button" data-p="orgs">🏛 Orgs</button><button type="button" data-p="notes">✉ Notes</button><button type="button" data-p="profile">○ Profile</button><button type="button" data-p="account">◉ Account</button>
-</nav><div class="ver">stage 4+5 · api-backed</div></aside>
+<button type="button" data-p="dash" class="on">⌂ Today</button><button type="button" data-p="new">＋ New goal</button><button type="button" data-p="orgs">◌ Groups</button><button type="button" data-p="notes">✉ Updates</button><button type="button" data-p="profile">○ My progress</button><button type="button" data-p="account">◉ Account</button>
+</nav><div class="ver">make steady progress</div></aside>
 <main class="main">
 <div id="err"></div>
 <section class="page on" id="p-dash">
-<div class="eyebrow">DASHBOARD</div><h1>Commitments</h1><p class="sub" id="apiState">Connecting to API…</p>
+<div class="eyebrow">TODAY</div><h1>A little progress goes a long way.</h1><p class="sub" id="apiState">Getting your goals ready…</p>
 <div class="card" id="sumCard" style="display:none"><div class="eyebrow">Summary</div><p class="sub" id="sumText"></p></div>
 <div class="card" id="list"></div>
 <div class="card"><div class="eyebrow">Ledger (simulated)</div><p class="sub">Double-entry trail + breakage splits. Exports from the API.</p><a class="btn btn-s" href="/ledger.csv" download style="text-decoration:none">Download ledger.csv</a></div>
 </section>
 <section class="page" id="p-new">
-<div class="eyebrow">NEW COMMITMENT</div><h1 id="wTitle">What do you want to accomplish?</h1>
+<div class="eyebrow">NEW GOAL</div><h1 id="wTitle">What would you like to make progress on?</h1>
 <div class="card">
 <div class="steps"><i class="on" id="s1"></i><i id="s2"></i><i id="s3"></i><i id="s4"></i></div>
 <div id="w1"><input id="fGoal" placeholder="e.g. Finish certification"><div class="row"><button class="btn btn-p" data-w="2">Continue →</button></div></div>
-<div id="w2" style="display:none"><input id="fCrit" placeholder="Success criteria (e.g. certificate by 30 Oct)"><div class="row"><button class="btn btn-s" data-w="1">← Back</button><button class="btn btn-p" data-w="3">Continue →</button></div></div>
+<div id="w2" style="display:none"><input id="fCrit" placeholder="What does finished look like?"><input id="fSteps" placeholder="Your steps, separated with commas"><p class="meta">Example: Read chapter 1, write notes, share a summary</p><div class="row"><button class="btn btn-s" data-w="1">← Back</button><button class="btn btn-p" data-w="3">Continue →</button></div></div>
 <div id="w3" style="display:none"><input id="fDate" type="date"><input id="fStake" type="number" min="0" placeholder="Stake amount, minor units (0 = no money)"><div class="row"><button class="btn btn-s" data-w="2">← Back</button><button class="btn btn-p" data-w="4">Review →</button></div></div>
 <div id="w4" style="display:none"><p class="sub" id="review"></p><div class="row"><button class="btn btn-s" data-w="3">← Back</button><button class="btn btn-p" id="create">Accept + Create (draft)</button></div></div>
 </div>
@@ -253,12 +253,12 @@ function wiz(s){
   if(s==="4") $("review").textContent="Goal: "+$("fGoal").value+" · Success: "+($("fCrit").value||"(default)")+" · Deadline: "+$("fDate").value+" · Stake: "+($("fStake").value||0)+" (simulated, no money in Stage 2)";
 }
 $("create").addEventListener("click",function(){
-  call("POST","/commitments",{objective:$("fGoal").value,successCriteria:$("fCrit").value,deadline:$("fDate").value,stakeAmount:+($("fStake").value||0)}).then(function(r){
+  call("POST","/commitments",{objective:$("fGoal").value,successCriteria:$("fCrit").value,deadline:$("fDate").value,stakeAmount:+($("fStake").value||0),milestones:$("fSteps").value.split(",")}).then(function(r){
     if(r.status!==201){ err("Create failed ("+r.status+"): "+JSON.stringify(r.body)); return; }
     var box=$("afterCreate"); box.style.display="block";
     box.innerHTML="";
-    var p=document.createElement("p"); p.className="sub"; p.textContent="Draft "+r.body.id+" created. Activate to pin rules, then add milestones.";
-    var b=document.createElement("button"); b.type="button"; b.className="btn btn-p"; b.textContent="Activate now";
+    var p=document.createElement("p"); p.className="sub"; p.textContent="Your goal is ready. Start when you feel ready.";
+    var b=document.createElement("button"); b.type="button"; b.className="btn btn-p"; b.textContent="Start this goal";
     b.onclick=function(){ call("POST","/commitments/"+r.body.id+"/activate").then(function(){ openDetail(r.body.id); load(); }); };
     box.appendChild(p); box.appendChild(b);
     load();

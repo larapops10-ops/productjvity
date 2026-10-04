@@ -329,6 +329,7 @@ export async function handlePostgresApi(req, res, url, send) {
     const rules = defaultRules(body);
     const result = await pool.query(`insert into commitments (id,user_id,rules,objective,deadline,stake_amount,currency,status)
       values ($1,$2,$3::jsonb,$4,$5,$6,$7,'draft') returning *`, [id, user.id, JSON.stringify(rules), String(body.objective).trim(), body.deadline, body.stakeAmount || 0, body.currency || "NGN"]);
+    for (const title of (body.milestones || []).map((item) => String(item).trim()).filter(Boolean)) await pool.query("insert into milestones (id,commitment_id,title,required,done) values ($1,$2,$3,true,false)", [randomUUID(), id, title]);
     return send(201, await commitmentView(result.rows[0]));
   }
 
