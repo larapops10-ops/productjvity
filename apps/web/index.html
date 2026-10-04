@@ -86,6 +86,7 @@
 "use strict";
 var API = "/v1"; // PostgreSQL API, served from the same local address as this page
 var authToken = localStorage.getItem("productjvity_auth_token") || "";
+var currentUserId = "";
 var errBox = document.getElementById("err");
 function err(m){ errBox.style.display="block"; errBox.textContent=m; }
 function $(id){ return document.getElementById(id); }
@@ -113,7 +114,7 @@ var navs=document.querySelectorAll("#nav button");
 for(var n=0;n<navs.length;n++)(function(b){b.addEventListener("click",function(){go(b.getAttribute("data-p"));});})(navs[n]);
 function loadAccount(){
   call("GET","/me").then(function(r){
-    if(r.status===200){ $("accountState").textContent="Signed in as "+r.body.user.name+" ("+r.body.user.email+")."; $("logout").style.display="inline-block"; }
+    if(r.status===200){ currentUserId=r.body.user.id; $("accountState").textContent="Signed in as "+r.body.user.name+" ("+r.body.user.email+")."; $("logout").style.display="inline-block"; }
     else { $("accountState").textContent="Create an account to keep your commitments private."; $("logout").style.display="none"; }
   });
 }
@@ -346,21 +347,19 @@ function loadNotes(){
   });
 }
 $("consentBox").addEventListener("change",function(){
-  call("POST","/users/demo-user/consent",{consentProfilePublic:$("consentBox").checked}).then(function(){ loadProfile(); });
+  if(!currentUserId){ err("Sign in to change your profile setting."); return; }
+  call("POST","/users/"+currentUserId+"/consent",{consentProfilePublic:$("consentBox").checked}).then(function(){ loadProfile(); });
 });
 function loadProfile(){
-  call("GET","/users/demo-user/history").then(function(r){
+  call("GET","/me").then(function(me){ if(me.status!==200){ $("histBox").textContent="Sign in to view your history."; return; } currentUserId=me.body.user.id; return call("GET","/users/"+currentUserId+"/history").then(function(r){
     var B=$("histBox"); B.innerHTML="";
     if(r.status!==200){ B.textContent="history unavailable"; return; }
     var s=r.body.stats, d=document.createElement("p"); d.className="sub";
     d.textContent=r.body.user.name+" · "+s.commitments+" commitments · "+s.successful+" successful · "+s.completionRate+"%";
     B.appendChild(d);
     $("consentBox").checked=false;
-    call("GET","/users").then(function(ru){
-      var me=(ru.body||[]).find(function(u){return u.id==="demo-user";});
-      if(me) $("consentBox").checked=!!me.consentProfilePublic;
-    });
-  });
+    $("consentBox").checked=!!me.body.user.consentProfilePublic;
+  }); });
 }
 load();
 })();

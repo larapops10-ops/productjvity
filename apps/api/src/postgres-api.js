@@ -230,6 +230,39 @@ export async function handlePostgresApi(req, res, url, send) {
       upcoming: active.sort((left, right) => new Date(left.deadline) - new Date(right.deadline)).slice(0, 5).map((row) => ({ id: row.id, objective: row.objective, deadline: row.deadline }))
     });
   }
+  if (method === "GET" && path.length === 1 && path[0] === "notifications") {
+    const rows = await pool.query("select id,template,payload,sent_at from notifications where user_id=$1 order by sent_at desc", [user.id]);
+    return send(200, rows.rows.map((row) => ({ id: row.id, template: row.template, ...row.payload, sentAt: row.sent_at })));
+  }
+  if (method === "POST" && path.join("/") === "notifications/send-reminders") {
+    const due = await pool.query(`select id,deadline from commitments where user_id=$1 and status='active'
+      and deadline <= now() + interval '7 days'`, [user.id]);
+    let sent = 0;
+    for (const commitment of due.rows) {
+      const exists = await pool.query(`select id from notifications where user_id=$1 and template='deadline_soon'
+        and payload->>'commitmentId'=$2 and sent_at::date=current_date`, [user.id, commitment.id]);
+      if (exists.rows[0]) continue;
+      await pool.query("insert into notifications (id,user_id,template,payload) values ($1,$2,'deadline_soon',$3::jsonb)", [randomUUID(), user.id, JSON.stringify({ commitmentId: commitment.id, deadline: commitment.deadline })]);
+      sent += 1;
+    }
+    return send(200, { sent });
+  }
+  if (path[0] === "users" && path[1]) {
+    const target = (await pool.query("select * from users where id=$1", [path[1]])).rows[0];
+    if (!target) return send(404, { error: "not-found" });
+    if (method === "POST" && path[2] === "consent") {
+      if (target.id !== user.id) return send(403, { error: "only your own profile can be changed" });
+      const body = await readJson(req);
+      const updated = await pool.query("update users set consent_profile_public=$1,updated_at=now() where id=$2 returning *", [!!body.consentProfilePublic, target.id]);
+      return send(200, publicUser(updated.rows[0]));
+    }
+    if (method === "GET" && path[2] === "history") {
+      if (target.id !== user.id && !target.consent_profile_public) return send(403, { error: "profile is private" });
+      const commitments = (await pool.query("select * from commitments where user_id=$1 order by created_at desc", [target.id])).rows;
+      const successful = commitments.filter((item) => item.outcome === "successful").length;
+      return send(200, { user: publicUser(target), stats: { commitments: commitments.length, successful, completionRate: commitments.length ? Math.floor((successful * 100) / commitments.length) : 0 }, commitments: await Promise.all(commitments.map(commitmentView)) });
+    }
+  }
   if (method === "POST" && path.length === 1 && path[0] === "commitments") {
     const body = await readJson(req);
     if (!String(body.objective || "").trim() || !String(body.deadline || "").trim()) return send(422, { error: "objective and deadline are required" });
