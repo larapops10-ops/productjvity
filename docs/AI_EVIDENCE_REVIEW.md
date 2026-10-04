@@ -13,6 +13,6 @@ Productjvity may ask an AI service to examine an uploaded proof file and provide
 
 ## Enabling later
 
-Set `AI_REVIEW_ENABLED=true`, choose a provider and model, and supply that provider's secret through the deployment environment. Do not put an API key in the app, browser code, Git, or this file.
+To enable the Gemini pilot, set `AI_REVIEW_ENABLED=true`, `AI_REVIEW_PROVIDER=gemini`, and add `GEMINI_API_KEY` through the deployment environment. Do not put an API key in the app, browser code, Git, or this file. The pilot sends only JPG, PNG, and WebP proof files plus the task objective and success criteria. PDFs continue to manual review.
 
-Until a provider is explicitly configured, review requests are recorded as `requires_human_review`; no evidence leaves Productjvity.
+Until a provider is explicitly configured, review requests are recorded as `requires_human_review`; no evidence leaves Productjvity. Gemini requests use `store: false`, but a free-tier account may still use submitted content to improve Google's products. Use sample proofs only until you move to a paid privacy-appropriate arrangement.

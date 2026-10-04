@@ -271,7 +271,7 @@ export async function handlePostgresApi(req, res, url, send) {
   if (method === "POST" && path[2] === "evidence" && path[4] === "ai-review") {
     const evidence = (await pool.query("select * from evidence where id=$1 and commitment_id=$2", [path[3], commitment.id])).rows[0];
     if (!evidence) return send(404, { error: "evidence-not-found" });
-    return send(202, await queueAiAssistedReview({ evidence, commitmentId: commitment.id }));
+    return send(202, await queueAiAssistedReview({ evidence, commitment }));
   }
   if (method === "POST" && path[2] === "milestones" && path[4] === "toggle") {
     const body = await readJson(req);
