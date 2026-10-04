@@ -36,6 +36,7 @@
 <section class="page on" id="p-dash">
 <div class="eyebrow">TODAY</div><h1>A little progress goes a long way.</h1><p class="sub" id="apiState">Getting your goals ready…</p>
 <div class="card" id="sumCard" style="display:none"><div class="eyebrow">Summary</div><p class="sub" id="sumText"></p></div>
+<div class="card"><div class="eyebrow">WHAT WOULD YOU LIKE TO DO?</div><p class="sub">Start something new, find people to grow with, or look back at your progress.</p><div class="row"><button type="button" class="btn btn-p" id="dashNewGoal">Start a new goal</button><button type="button" class="btn btn-s" id="dashExplore">Explore shared goals</button><button type="button" class="btn btn-s" id="dashProgress">My progress</button></div></div>
 <div class="card" id="list"></div>
 <div class="card"><div class="eyebrow">YOUR PROGRESS</div><p class="sub">A simple record of the goals you have worked on.</p></div>
 </section>
@@ -126,6 +127,9 @@ function go(p){
 }
 var navs=document.querySelectorAll("#nav button");
 for(var n=0;n<navs.length;n++)(function(b){b.addEventListener("click",function(){go(b.getAttribute("data-p"));});})(navs[n]);
+$("dashNewGoal").addEventListener("click",function(){ go("new"); });
+$("dashExplore").addEventListener("click",function(){ go("discover"); });
+$("dashProgress").addEventListener("click",function(){ go("profile"); });
 var welcomeButtons=document.querySelectorAll("[data-welcome]");
 for(var q=0;q<welcomeButtons.length;q++)(function(b){b.addEventListener("click",function(){ var choice=b.getAttribute("data-welcome"); go(choice==="individual"?"new":choice==="group"?"discover":"account"); });})(welcomeButtons[q]);
 function loadAccount(){
