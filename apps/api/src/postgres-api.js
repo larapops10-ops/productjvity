@@ -1,8 +1,15 @@
 import { createHash, pbkdf2Sync, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
+import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { pool } from "./database.js";
 
 const PASSWORD_ITERATIONS = 210_000;
 const SESSION_LIFETIME_SECONDS = 60 * 60 * 24 * 14;
+const MAX_EVIDENCE_BYTES = 5 * 1024 * 1024;
+const EVIDENCE_TYPES = { "image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp", "application/pdf": ".pdf" };
+const here = resolve(fileURLToPath(new URL(".", import.meta.url)));
+const uploadDirectory = resolve(here, "../../../uploads/evidence");
 
 const publicUser = (row) => ({
   id: row.id, email: row.email, name: row.name, role: row.role,
@@ -93,6 +100,53 @@ async function ownedCommitment(id, userId) {
   return result.rows[0] || null;
 }
 
+async function saveEvidence(body, commitmentId) {
+  const extension = EVIDENCE_TYPES[body.contentType];
+  const encoded = String(body.dataBase64 || "");
+  if (!extension) return { error: "Only JPG, PNG, WebP, and PDF files are allowed" };
+  if (!encoded || !/^[A-Za-z0-9+/]*={0,2}$/.test(encoded) || encoded.length % 4 !== 0) return { error: "The uploaded file could not be read" };
+  if (encoded.length > Math.ceil(MAX_EVIDENCE_BYTES * 4 / 3) + 4) return { error: "Files must be 5 MB or smaller" };
+  const bytes = Buffer.from(encoded, "base64");
+  if (bytes.length > MAX_EVIDENCE_BYTES) return { error: "Files must be 5 MB or smaller" };
+  const sha256 = createHash("sha256").update(bytes).digest("hex");
+  const duplicate = await pool.query("select id from evidence where commitment_id=$1 and sha256=$2", [commitmentId, sha256]);
+  if (duplicate.rows[0]) return { error: "This exact proof file was already uploaded" };
+
+  await mkdir(uploadDirectory, { recursive: true });
+  const storageKey = `${randomUUID()}${extension}`;
+  const diskPath = resolve(uploadDirectory, storageKey);
+  await writeFile(diskPath, bytes, { flag: "wx" });
+  try {
+    const id = randomUUID();
+    const inserted = await pool.query(`insert into evidence (id,commitment_id,storage_key,file_url,content_type,size_bytes,sha256,note)
+      values ($1,$2,$3,$4,$5,$6,$7,$8) returning *`, [
+      id, commitmentId, storageKey, `/uploads/evidence/${storageKey}`, body.contentType, bytes.length, sha256, String(body.note || "").trim() || null
+    ]);
+    const evidence = inserted.rows[0];
+    return { evidence: { id: evidence.id, storageKey: evidence.storage_key, fileUrl: evidence.file_url, contentType: evidence.content_type, sizeBytes: Number(evidence.size_bytes), sha256: evidence.sha256, note: evidence.note, submittedAt: evidence.submitted_at } };
+  } catch (error) {
+    await unlink(diskPath).catch(() => {});
+    throw error;
+  }
+}
+
+export async function serveEvidence(req, res, url) {
+  const match = url.pathname.match(/^\/uploads\/evidence\/([0-9a-f-]+\.(?:jpg|png|webp|pdf))$/);
+  if (!match) return false;
+  const user = await currentUser(req);
+  if (!user) { res.writeHead(401, { "content-type": "application/json" }); res.end(JSON.stringify({ error: "sign-in required" })); return true; }
+  const key = match[1];
+  const allowed = await pool.query(`select e.content_type from evidence e join commitments c on c.id=e.commitment_id
+    where e.storage_key=$1 and c.user_id=$2`, [key, user.id]);
+  if (!allowed.rows[0]) { res.writeHead(404, { "content-type": "application/json" }); res.end(JSON.stringify({ error: "evidence-not-found" })); return true; }
+  try {
+    const bytes = await readFile(resolve(uploadDirectory, key));
+    res.writeHead(200, { "content-type": allowed.rows[0].content_type, "content-disposition": "inline" });
+    res.end(bytes);
+  } catch { res.writeHead(404, { "content-type": "application/json" }); res.end(JSON.stringify({ error: "evidence-not-found" })); }
+  return true;
+}
+
 export async function handlePostgresApi(req, res, url, send) {
   const path = url.pathname.replace(/^\/v1/, "").split("/").filter(Boolean);
   const method = req.method;
@@ -169,6 +223,11 @@ export async function handlePostgresApi(req, res, url, send) {
       values ($1,$2,$3,$4,true,false) returning *`, [id, commitment.id, String(body.title).trim(), body.dueAt || null]);
     const m = created.rows[0];
     return send(201, { id: m.id, title: m.title, dueAt: m.due_at, required: m.required, done: m.done });
+  }
+  if (method === "POST" && path[2] === "evidence" && path.length === 3) {
+    if (commitment.status !== "active") return send(409, { error: "evidence can only be added while a commitment is active", status: commitment.status });
+    const saved = await saveEvidence(await readJson(req), commitment.id);
+    return saved.error ? send(422, { error: saved.error }) : send(201, saved.evidence);
   }
   if (method === "POST" && path[2] === "milestones" && path[4] === "toggle") {
     const body = await readJson(req);

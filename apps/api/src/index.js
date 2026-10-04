@@ -1,10 +1,15 @@
 // PostgreSQL-backed API foundation. It runs beside the existing Ruby prototype
 // during migration, on port 3002 by default.
 import { createServer } from "node:http";
+import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { databaseHealth } from "./database.js";
-import { handlePostgresApi } from "./postgres-api.js";
+import { handlePostgresApi, serveEvidence } from "./postgres-api.js";
 
 const PORT = Number(process.env.PORT || 3002);
+const here = resolve(fileURLToPath(new URL(".", import.meta.url)));
+const pagePath = resolve(here, "../../../apps/web/index.html");
 
 function send(res, status, body) {
   res.writeHead(status, {
@@ -20,6 +25,12 @@ const server = createServer(async (req, res) => {
   if (req.method === "OPTIONS") return send(res, 204, {});
   const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
   try {
+    if (await serveEvidence(req, res, url)) return;
+    if (req.method === "GET" && url.pathname === "/") {
+      const page = await readFile(pagePath, "utf8");
+      res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+      return res.end(page);
+    }
     if (url.pathname === "/health") return send(res, 200, { ok: true, service: "productjvity-postgres-api", phase: "migration" });
     if (url.pathname === "/db-health") return send(res, 200, { ok: true, database: await databaseHealth() });
     if (url.pathname === "/openapi.json") return send(res, 200, {

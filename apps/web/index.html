@@ -84,7 +84,7 @@
 <script>
 (function(){
 "use strict";
-var API = ""; // same-origin: page is served by the API server itself
+var API = "/v1"; // PostgreSQL API, served from the same local address as this page
 var authToken = localStorage.getItem("productjvity_auth_token") || "";
 var errBox = document.getElementById("err");
 function err(m){ errBox.style.display="block"; errBox.textContent=m; }
@@ -192,7 +192,7 @@ function openDetail(id){
     c.evidence.forEach(function(e){
       var p=document.createElement("div"); p.className="meta";
       if(e.fileUrl){
-        var a=document.createElement("a"); a.href=e.fileUrl; a.textContent="• "+e.fileName;
+        var a=document.createElement("a"); a.href=e.fileUrl; a.textContent="• "+(e.fileName||e.note||e.storageKey||"Evidence");
         a.onclick=(function(url){ return function(event){
           if(!authToken) return;
           event.preventDefault();
