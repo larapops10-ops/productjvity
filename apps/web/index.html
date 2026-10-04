@@ -134,7 +134,14 @@ function loadAccount(){
     else { $("accountState").textContent="Create an account to keep your commitments private."; $("logout").style.display="none"; }
   });
 }
-function saveSession(r){ authToken=r.body.token; localStorage.setItem("productjvity_auth_token",authToken); loadAccount(); load(); }
+function saveSession(r){
+  authToken=r.body.token;
+  localStorage.setItem("productjvity_auth_token",authToken);
+  // Signing in is the finish line for this screen: take the person straight
+  // to their Today page rather than leaving them on the account form.
+  go("dash");
+  loadAccount();
+}
 $("signUp").addEventListener("click",function(){ call("POST","/auth/signup",{name:$("signUpName").value.trim(),email:$("signUpEmail").value.trim(),password:$("signUpPassword").value}).then(function(r){ if(r.status===201) saveSession(r); else err(r.body.error||"Could not create account"); }); });
 $("login").addEventListener("click",function(){ call("POST","/auth/login",{email:$("loginEmail").value.trim(),password:$("loginPassword").value}).then(function(r){ if(r.status===200) saveSession(r); else err(r.body.error||"Could not sign in"); }); });
 $("logout").addEventListener("click",function(){ call("POST","/auth/logout",{}).then(function(){ authToken=""; localStorage.removeItem("productjvity_auth_token"); loadAccount(); load(); }); });
