@@ -13,14 +13,15 @@ Current state: PRD + README only. No app code. This plan starts at design and en
 2. Stage 0 — Product design (UX/UI)
 3. Stage 1 — Architecture & technical foundation
 4. Stage 2 — Personal commitments MVP (no real money)
-5. Stage 3 — Money: ledger, settlement & breakage pool
-6. Stage 4 — Institutional programmes
-7. Stage 5 — Social/groups, dashboards, notifications, history
-8. Stage 6 — Disputes, exceptions, platform admin
-9. Stage 7 — Public API, hardening, metrics & launch
-10. Cross-cutting requirements
-11. Build order & dependencies
-12. Appendix: repo tree, data dictionary, endpoint catalog
+5. Stage 2A — AI-assisted evidence review (human-in-the-loop)
+6. Stage 3 — Money: ledger, settlement & breakage pool
+7. Stage 4 — Institutional programmes
+8. Stage 5 — Social/groups, dashboards, notifications, history
+9. Stage 6 — Disputes, exceptions, platform admin
+10. Stage 7 — Public API, hardening, metrics & launch
+11. Cross-cutting requirements
+12. Build order & dependencies
+13. Appendix: repo tree, data dictionary, endpoint catalog
 
 ---
 
@@ -113,7 +114,27 @@ Concrete build:
 - Tests: wizard validation, evidence upload, lifecycle happy path, retrospective-edit rejection, access control (user sees own only)
 - Acceptance: demo user creates goal, sets deadline/criteria, submits evidence, marked successful/unsuccessful, appears in history.
 
-## 5. Stage 3 — Money: ledger, settlement & breakage pool
+## 5. Stage 2A — AI-assisted evidence review (human-in-the-loop)
+
+Objective: use AI to help reviewers assess evidence without allowing an automated model to independently cause a financial forfeiture.
+
+Scope and safeguards:
+- Introduce an `ai_review` adapter with swappable providers. The request contains only the minimum needed evidence, the commitment's pinned success criteria, and an explicit task-specific review prompt.
+- Store an immutable `ai_review_assessments` record: model/provider version, evidence IDs and hashes, prompt version, structured recommendation (`likely_complete|unclear|likely_incomplete`), confidence, short rationale, processing time, and error state. Never store API keys or raw hidden reasoning.
+- AI returns a recommendation only. A human reviewer must decide every result that can produce a forfeiture, payment, reward, or adverse reputation outcome. Low-risk, explicitly opted-in rules may later allow auto-completion only after a review threshold, policy approval, and a dispute window.
+- Add a review queue: high confidence may be labelled “AI-assisted”; low confidence, conflicting evidence, unsupported formats, or technical failures are routed to manual review. A reviewer may accept, reject, or override the recommendation with a reason.
+- Add consent and disclosure before upload: what evidence may be sent to the configured AI provider, why, retention expectations, whether the user can opt out, and the manual-review alternative.
+- Add cost and privacy controls: maximum file/pages per request, redaction/PII-minimisation pass where feasible, provider timeout/retry policy, per-programme AI budget, audit log, and a feature flag that defaults off.
+
+Concrete build:
+- Data: `ai_review_assessments(id, commitment_id, evidence_ids_json, provider, model, prompt_version, recommendation, confidence, rationale, status, reviewed_by, reviewed_at, created_at)` plus `programme_rules.aiReviewPolicy` and user consent capture.
+- API: `POST /commitments/:id/ai-review`, `GET /commitments/:id/ai-review`, `POST /ai-reviews/:id/decision`; all require owner/reviewer permissions and write audit records.
+- Frontend: `AIReviewStatus` on the commitment, reviewer queue filters, “request human review” action, and a visible explanation that AI is assistance—not the final decision.
+- Tests: malformed/no evidence, provider timeout, consent required, low-confidence routing, reviewer override, audit record, and guarantee that an AI recommendation alone cannot settle or forfeit funds.
+
+Acceptance: a test image/PDF receives a structured recommendation; a reviewer can make and explain the final verdict; failed/unclear AI calls safely fall back to manual review; settlement endpoint rejects an AI-only outcome.
+
+## 6. Stage 3 — Money: ledger, settlement & breakage pool
 
 PRD: §8, §5.2/5.5, §6.6, §15.
 Scope: simulated ledger correctness first; provider wiring behind adapter.
@@ -128,7 +149,7 @@ Concrete build:
 
 Deferred: real capture/payout, KYC, chargebacks → Stage 7.
 
-## 6. Stage 4 — Institutional programmes
+## 7. Stage 4 — Institutional programmes
 
 PRD: §7, §10.
 Concrete build:
@@ -137,7 +158,7 @@ Concrete build:
 - AuthZ matrix tests: institution_admin scoped to own institution; participant cannot review others' evidence; enrol blocked without acceptance
 - Acceptance: institution creates cohort, bulk-enrols 10 test users via seed script, runs verify+settle, results report matches ledger.
 
-## 7. Stage 5 — Social/groups, dashboards, notifications, history
+## 8. Stage 5 — Social/groups, dashboards, notifications, history
 
 PRD: §12, §13, §14, §17.
 Concrete build:
@@ -148,7 +169,7 @@ Concrete build:
 - Tests: reminder fires in fake-timer test; totals reconcile; private profile returns 403 to others
 - Acceptance: user receives deadline reminder; dashboard numbers equal ledger; group board shows aggregates without leaking private users.
 
-## 8. Stage 6 — Disputes, exceptions, platform admin
+## 9. Stage 6 — Disputes, exceptions, platform admin
 
 PRD: §16, §18.
 Concrete build:
@@ -158,7 +179,7 @@ Concrete build:
 - Tests: overturn creates reversal entries; every financial admin action has audit row; suspended programme blocks new enrolments
 - Acceptance: disputed commitment can be corrected end-to-end with full before/after audit visible.
 
-## 9. Stage 7 — Public API, hardening, metrics & launch
+## 10. Stage 7 — Public API, hardening, metrics & launch
 
 PRD: §9 (business model), §20 (metrics), §21 (infrastructure vision).
 Concrete build:
@@ -171,7 +192,7 @@ Concrete build:
 
 ---
 
-## 10. Cross-cutting requirements (apply to every stage)
+## 11. Cross-cutting requirements (apply to every stage)
 
 - Transparency checklist (§15): every screen touching money shows stake, max loss, success/failure rule, reward, forfeiture split, fees. Tested by snapshot test on `TermsPanel` + `OutcomeReceipt`.
 - Fairness: rules version pinned at `active`; any edit creates new version, never mutates committed version. Enforced at DB (no UPDATE on pinned `rules_json`) + test.
@@ -179,14 +200,16 @@ Concrete build:
 - Testing strategy: unit (settlement/rules), integration (API + DB per stage), e2e (Playwright: join→evidence→verify→settle→receipt), contract (OpenAPI snapshot).
 - Accessibility/i18n: forms keyboard-navigable; currency formatting per locale (NGN default `₦`); copy ready for translation.
 - Privacy: evidence files private; profile/history gated by consent; leaderboard aggregates by default.
+- AI review: use only an approved provider behind a feature flag; disclose processing before upload; retain model, prompt, evidence-hash, recommendation, and human-decision audit data; manual review is required for financial or adverse outcomes.
 
-## 11. Build order & dependencies
+## 12. Build order & dependencies
 
 ```
 Stage 0 Design (IA/wireframes/DS/copy)
  → Stage 1 Arch (schema/rules/CI/skeleton)
- → Stage 2 Personal MVP ─┐
- → Stage 3 Ledger         ├─ must precede Institutions (money math reused)
+ → Stage 2 Personal MVP
+ → Stage 2A AI review ────┐
+ → Stage 3 Ledger          ├─ must precede Institutions (money math reused)
  → Stage 4 Institutions ──┘
  → Stage 5 Dashboards/Notify/History (needs ledger + programmes)
  → Stage 6 Disputes/Admin (needs all flows to dispute)
@@ -202,11 +225,12 @@ Immediate next actions:
 
 ---
 
-## 12. Appendix
+## 13. Appendix
 
 ### A. Endpoint catalog (v1 target)
 Auth/users: `POST /auth/signup|login`, `GET /me`
 Commitments: `POST /commitments`, `GET /commitments/:id`, `POST /commitments/:id/evidence`, `POST /commitments/:id/submit-for-verification`, `POST /commitments/:id/verify`, `POST /commitments/:id/settle`, `GET /commitments/:id/outcome`
+AI review: `POST /commitments/:id/ai-review`, `GET /commitments/:id/ai-review`, `POST /ai-reviews/:id/decision`
 Programmes: `POST /programmes`, `GET /programmes/:id`, `POST /programmes/:id/enrol`, `GET /programmes/:id/progress`, `GET /programmes/:id/results`
 Disputes: `POST /disputes`, `POST /disputes/:id/review`
 Admin: `GET /admin/overview`, `POST /admin/programmes/:id/suspend|approve`, `GET /admin/ledger`, `GET /admin/metrics`
