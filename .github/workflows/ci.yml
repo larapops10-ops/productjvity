@@ -1,0 +1,25 @@
+name: Productjvity checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  prototype-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Check Ruby API syntax
+        run: ruby -c apps/api/server.rb
+      - name: Check settlement calculations
+        run: ruby packages/settlement/test_settle.rb
+      - name: Check commitment-rule fixture
+        run: node packages/rules/validate.mjs packages/rules/fixtures/ngn-100k-50pct.json

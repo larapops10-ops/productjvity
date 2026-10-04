@@ -164,7 +164,13 @@ Full specification: [`docs/PRODUCTJVITY PRODUCT REQUIREMENTS DOCUMENT.md`](docs/
 
 ## Project Status
 
-Early specification stage. PRD complete. Implementation to follow.
+Working prototype in progress. The current local build supports commitments,
+milestones, evidence uploads, verification, simulated settlement, institutions,
+notifications, disputes, and an audit trail. It is not yet production-ready:
+real authentication, PostgreSQL persistence, private production evidence
+storage, payments, and deployment hardening are the next milestones.
+
+Development documentation lives in [`design/`](design/) and [`docs/`](docs/).
 
 ## Vision
 
