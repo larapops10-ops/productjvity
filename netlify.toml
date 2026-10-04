@@ -1,0 +1,8 @@
+[build]
+  command = "node scripts/build-netlify-demo.mjs"
+  publish = "dist/netlify-demo"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

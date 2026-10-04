@@ -88,12 +88,16 @@
 </section>
 <section class="page" id="p-review"><div class="eyebrow">ACCOUNTABILITY REVIEW</div><h1 id="rTitle">Review a goal</h1><p class="sub" id="rMeta"></p><div class="card" id="rBody"></div></section>
 </main><nav class="mobile-nav app-nav" aria-label="Main navigation"><button type="button" data-p="dash" class="on">Today</button><button type="button" data-p="new">New goal</button><button type="button" data-p="discover">Explore</button><button type="button" data-p="profile">Progress</button><button type="button" data-p="account">Account</button></nav></div>
-<script>
+<script src="demo-config.js"></script><script>
 (function(){
 "use strict";
 var API = "/v1"; // PostgreSQL API, served from the same local address as this page
+var demoMode = window.PRODUCTJVITY_DEMO === true;
 var authToken = localStorage.getItem("productjvity_auth_token") || "";
 var currentUserId = "";
+var demoCommitments=[{id:"demo-read",objective:"Finish my professional reading plan",deadline:"2026-10-31",stakeAmount:0,currency:"NGN",status:"active",reviewMode:"self",progressPct:50,milestones:[{id:"demo-m1",title:"Read the first two chapters",done:true},{id:"demo-m2",title:"Write down three useful ideas",done:false}],evidence:[],verifications:[]}];
+var demoAwards=[{id:"demo-award",title:"One step closer",description:"You completed a milestone."}];
+if(demoMode){ document.title="Productjvity — Interactive preview"; var previewNote=document.createElement("p"); previewNote.className="meta"; previewNote.textContent="Interactive preview — changes here are temporary and no real money is involved."; document.getElementById("p-welcome").appendChild(previewNote); }
 var errBox = document.getElementById("err");
 function err(m){
   var raw=String(m||"").toLowerCase(), friendly="Something did not work just now. Please try again.";
@@ -113,6 +117,7 @@ function statusText(status){ return ({draft:"Not started",active:"In progress",p
 var draftedMilestones=[];
 function drawMilestones(){ $("milestoneDrafts").innerHTML=draftedMilestones.length?draftedMilestones.map(function(m,i){return "<div>◦ "+m.replace(/[&<>\"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];})+" <button type='button' data-remove-milestone='"+i+"' style='border:0;background:none;color:var(--mut);cursor:pointer'>Remove</button></div>";}).join(""):"No milestones yet — you can add them later too."; }
 function call(method, path, body){
+  if(demoMode) return Promise.resolve(demoCall(method,path,body||{}));
   // Always send a JSON body on POST: Firefox omits Content-Length for
   // bodyless fetch POSTs and WEBrick answers 411 (curl sends 0, hiding this).
   var headers={"Content-Type":"application/json"}; if(authToken) headers.Authorization="Bearer "+authToken;
@@ -120,6 +125,21 @@ function call(method, path, body){
   opts.body = (method==="POST") ? JSON.stringify(body||{}) : (body?JSON.stringify(body):undefined);
   return fetch(API+path,opts)
     .then(function(r){ return r.json().then(function(j){ return {status:r.status,body:j}; }); });
+}
+function demoView(c){ return JSON.parse(JSON.stringify(c)); }
+function demoCall(method,path,body){
+  var found=function(){return demoCommitments.filter(function(c){return c.id===path.split("/")[2];})[0];};
+  if(path==="/auth/signup"||path==="/auth/login") return {status:method==="POST"?(path==="/auth/signup"?201:200):405,body:{token:"demo-token",user:{id:"demo-user",name:body.name||"Demo member",email:body.email||"demo@productjvity.app"}}};
+  if(path==="/me") return {status:200,body:{user:{id:"demo-user",name:"Demo member",email:"demo@productjvity.app",consentProfilePublic:false}}};
+  if(path==="/dashboard/summary") return {status:200,body:{active:demoCommitments.filter(function(c){return c.status==="active";}).length,completed:demoCommitments.filter(function(c){return c.status==="settled";}).length,completionRate:50,committed:0,returned:0,forfeited:0,notifications:0}};
+  if(path==="/commitments"&&method==="GET") return {status:200,body:demoCommitments.map(demoView)};
+  if(path==="/commitments"&&method==="POST"){var id="demo-"+Date.now(),c={id:id,objective:body.objective,deadline:body.deadline,stakeAmount:body.stakeAmount||0,currency:"NGN",status:"draft",reviewMode:body.reviewMode||"self",progressPct:0,milestones:(body.milestones||[]).map(function(t,i){return{id:id+"-m"+i,title:t,done:false};}),evidence:[],verifications:[]};demoCommitments.unshift(c);return {status:201,body:demoView(c)};}
+  if(path.indexOf("/commitments/")===0){var c=found();if(!c)return{status:404,body:{error:"Goal not found"}};if(path.split("/").length===3&&method==="GET")return{status:200,body:demoView(c)};if(path.endsWith("/activate")){c.status="active";return{status:200,body:demoView(c)};}if(path.endsWith("/submit-for-verification")){c.status="pending_verification";return{status:200,body:demoView(c)};}if(path.endsWith("/verify")){c.status=body.verdict;c.outcome=body.verdict;if(body.verdict==="successful")demoAwards.unshift({id:"goal-"+c.id,title:"Completion certificate",description:"Awarded for completing your goal with accountability."});return{status:200,body:demoView(c)};}if(path.endsWith("/settle")){c.status="settled";return{status:200,body:demoView(c)};}if(path.endsWith("/outcome"))return{status:200,body:{returned:0,forfeited:0}};if(path.endsWith("/milestones")&&method==="POST"){c.milestones.push({id:"m-"+Date.now(),title:body.title,done:false});return{status:201,body:{}};}if(path.indexOf("/toggle")>-1){var mid=path.split("/")[4];c.milestones.forEach(function(m){if(m.id===mid)m.done=body.done;});c.progressPct=c.milestones.length?Math.floor(c.milestones.filter(function(m){return m.done;}).length*100/c.milestones.length):0;return{status:200,body:{}};}if(path.endsWith("/evidence")&&method==="POST"){c.evidence.push({id:"e-"+Date.now(),note:body.note,fileName:body.fileName});return{status:201,body:{}};}}
+  if(path==="/awards")return{status:200,body:demoAwards};
+  if(path==="/accountability-partners"&&method==="GET")return{status:200,body:[]};
+  if(path==="/review-invitations"||path==="/review-queue"||path==="/notifications")return{status:200,body:[]};
+  if(path.indexOf("/users/")===0&&path.endsWith("/history"))return{status:200,body:{user:{name:"Demo member"},stats:{commitments:demoCommitments.length,successful:0,completionRate:50}}};
+  return {status:200,body:{}};
 }
 function go(p){
   var ps=document.querySelectorAll(".page"); for(var i=0;i<ps.length;i++) ps[i].classList.remove("on");
