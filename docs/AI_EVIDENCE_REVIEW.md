@@ -16,3 +16,7 @@ Productjvity may ask an AI service to examine an uploaded proof file and provide
 To enable the Gemini pilot, set `AI_REVIEW_ENABLED=true`, `AI_REVIEW_PROVIDER=gemini`, and add `GEMINI_API_KEY` through the deployment environment. Do not put an API key in the app, browser code, Git, or this file. The pilot sends only JPG, PNG, and WebP proof files plus the task objective and success criteria. PDFs continue to manual review.
 
 Until a provider is explicitly configured, review requests are recorded as `requires_human_review`; no evidence leaves Productjvity. Gemini requests use `store: false`, but a free-tier account may still use submitted content to improve Google's products. Use sample proofs only until you move to a paid privacy-appropriate arrangement.
+
+## Save a local key safely
+
+From the project folder, run `sh scripts/configure-gemini.sh`. It hides the key while you paste it and saves it only in the ignored `.env` file. Restart the PostgreSQL API afterwards.

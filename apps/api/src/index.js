@@ -6,10 +6,12 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { databaseHealth } from "./database.js";
 import { handlePostgresApi, serveEvidence } from "./postgres-api.js";
+import { loadLocalEnv } from "./env.js";
 
 const PORT = Number(process.env.PORT || 3002);
 const here = resolve(fileURLToPath(new URL(".", import.meta.url)));
 const pagePath = resolve(here, "../../../apps/web/index.html");
+loadLocalEnv(resolve(here, "../../../.env"));
 
 function send(res, status, body) {
   res.writeHead(status, {
