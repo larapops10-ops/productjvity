@@ -102,6 +102,15 @@ async function ownedCommitment(id, userId) {
   return result.rows[0] || null;
 }
 
+async function awardSuccessfulGoal(client, userId, commitmentId) {
+  const awards = [
+    ["goal_badge", "Goal keeper", "You followed through on your goal."],
+    ["certificate", "Completion certificate", "Awarded for completing your goal with accountability."]
+  ];
+  for (const [kind, title, description] of awards) await client.query(`insert into awards (id,user_id,commitment_id,kind,title,description)
+    select $1,$2,$3,$4,$5,$6 where not exists (select 1 from awards where commitment_id=$3 and kind=$4)`, [randomUUID(), userId, commitmentId, kind, title, description]);
+}
+
 async function programmeView(programme) {
   const rules = (await pool.query("select version,rules,effective_from from programme_rules where programme_id=$1 order by version desc limit 1", [programme.id])).rows[0];
   const commitments = (await pool.query("select * from commitments where programme_id=$1", [programme.id])).rows;
@@ -294,6 +303,7 @@ export async function handlePostgresApi(req, res, url, send) {
       await client.query(`insert into verification_decisions (id,commitment_id,method,verdict,reason,decided_by_id)
         values ($1,$2,'manual_review',$3,$4,$5)`, [randomUUID(), commitment.id, body.verdict, String(body.reason || "").trim() || null, user.id]);
       const updated = await client.query("update commitments set status=$1,outcome=$1,updated_at=now() where id=$2 returning *", [body.verdict, commitment.id]);
+      if (body.verdict === "successful") await awardSuccessfulGoal(client, commitment.user_id, commitment.id);
       await client.query("COMMIT");
       return send(200, await commitmentView(updated.rows[0]));
     } catch (error) { await client.query("ROLLBACK"); throw error; } finally { client.release(); }
@@ -459,6 +469,7 @@ export async function handlePostgresApi(req, res, url, send) {
       await client.query(`insert into verification_decisions (id,commitment_id,method,verdict,reason,decided_by_id)
         values ($1,$2,$3,$4,$5,$6)`, [randomUUID(), commitment.id, body.method, body.verdict, body.reason || null, user.id]);
       const updated = await client.query("update commitments set status=$1,outcome=$1,updated_at=now() where id=$2 returning *", [body.verdict, commitment.id]);
+      if (body.verdict === "successful") await awardSuccessfulGoal(client, user.id, commitment.id);
       await client.query("COMMIT");
       return send(200, await commitmentView(updated.rows[0]));
     } catch (error) { await client.query("ROLLBACK"); throw error; } finally { client.release(); }
