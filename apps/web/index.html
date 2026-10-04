@@ -99,6 +99,7 @@ function err(m){
   errBox.style.display="block"; errBox.textContent=friendly;
 }
 function $(id){ return document.getElementById(id); }
+function statusText(status){ return ({draft:"Not started",active:"In progress",pending_verification:"Ready for review",successful:"Completed",unsuccessful:"Not completed this time",settled:"Finished",disputed:"Being reviewed"})[status]||"In progress"; }
 var draftedMilestones=[];
 function drawMilestones(){ $("milestoneDrafts").innerHTML=draftedMilestones.length?draftedMilestones.map(function(m,i){return "<div>◦ "+m.replace(/[&<>\"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];})+" <button type='button' data-remove-milestone='"+i+"' style='border:0;background:none;color:var(--mut);cursor:pointer'>Remove</button></div>";}).join(""):"No milestones yet — you can add them later too."; }
 function call(method, path, body){
@@ -146,7 +147,7 @@ function load(){
   call("GET","/commitments").then(function(r){
     if(r.status===401){ go("account"); return; }
     if(r.status!==200){ err("API error "+r.status+": "+JSON.stringify(r.body)); return; }
-    $("apiState").textContent = r.body.length+" commitment(s) · API connected";
+    $("apiState").textContent = r.body.length ? "Here are the goals you are working on." : "Start with one small goal today.";
     var L=$("list"); L.innerHTML = r.body.length?"":"<p class='sub'>None yet — create one under New.</p>";
     r.body.forEach(function(c){
       var d=document.createElement("div"); d.style.cssText="padding:12px 0;border-top:1px solid var(--line)";
@@ -156,7 +157,7 @@ function load(){
       var t=document.createElement("div");
       t.innerHTML="<b></b> <span class='pill'></span><div class='meta'></div><div class='bar' style='margin-top:8px'><i style='width:0%'></i></div>";
       t.querySelector("b").textContent=c.objective;
-      t.querySelector(".pill").textContent=c.status;
+      t.querySelector(".pill").textContent=statusText(c.status);
       t.querySelector(".meta").textContent=(c.progressPct||0)+"% · due "+(c.deadline||"—");
       t.querySelector(".bar i").style.width=(c.progressPct||0)+"%";
       d.appendChild(t); d.appendChild(b); L.appendChild(d);
@@ -166,7 +167,7 @@ function load(){
 function openDetail(id){
   call("GET","/commitments/"+id).then(function(r){
     var c=r.body; $("dTitle").textContent=c.objective;
-    $("dMeta").textContent=c.status+" · rules v"+c.rulesVersion+" (pinned) · "+(c.progressPct||0)+"%";
+    $("dMeta").textContent=statusText(c.status)+" · "+(c.progressPct||0)+"% complete";
     var B=$("dBody"); B.innerHTML="";
     function btn(label,fn,primary){ var b=document.createElement("button"); b.type="button"; b.className="btn "+(primary?"btn-p":"btn-s"); b.textContent=label; b.onclick=fn; return b; }
     var row=document.createElement("div"); row.className="row";
