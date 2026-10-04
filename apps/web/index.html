@@ -88,7 +88,16 @@ var API = "/v1"; // PostgreSQL API, served from the same local address as this p
 var authToken = localStorage.getItem("productjvity_auth_token") || "";
 var currentUserId = "";
 var errBox = document.getElementById("err");
-function err(m){ errBox.style.display="block"; errBox.textContent=m; }
+function err(m){
+  var raw=String(m||"").toLowerCase(), friendly="Something did not work just now. Please try again.";
+  if(raw.indexOf("sign-in")>-1||raw.indexOf("401")>-1) friendly="Please sign in to continue.";
+  else if(raw.indexOf("password")>-1||raw.indexOf("email")>-1) friendly="Check your email and password, then try again.";
+  else if(raw.indexOf("upload")>-1||raw.indexOf("file")>-1) friendly="We could not add that proof. Please check the file and try again.";
+  else if(raw.indexOf("network")>-1||raw.indexOf("reach")>-1) friendly="We cannot connect right now. Please check your connection and try again.";
+  else if(raw.indexOf("deadline")>-1) friendly="Please choose a finish date for your goal.";
+  else if(raw.indexOf("objective")>-1||raw.indexOf("goal")>-1) friendly="Tell us what you would like to work on first.";
+  errBox.style.display="block"; errBox.textContent=friendly;
+}
 function $(id){ return document.getElementById(id); }
 var draftedMilestones=[];
 function drawMilestones(){ $("milestoneDrafts").innerHTML=draftedMilestones.length?draftedMilestones.map(function(m,i){return "<div>◦ "+m.replace(/[&<>\"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];})+" <button type='button' data-remove-milestone='"+i+"' style='border:0;background:none;color:var(--mut);cursor:pointer'>Remove</button></div>";}).join(""):"No milestones yet — you can add them later too."; }
