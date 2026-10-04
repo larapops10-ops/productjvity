@@ -3,6 +3,7 @@ import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { pool } from "./database.js";
+import { buildSettlement } from "./settlement.js";
 
 const PASSWORD_ITERATIONS = 210_000;
 const SESSION_LIFETIME_SECONDS = 60 * 60 * 24 * 14;
@@ -100,6 +101,23 @@ async function ownedCommitment(id, userId) {
   return result.rows[0] || null;
 }
 
+const ledgerRows = async (commitmentId, client = pool) => (await client.query(
+  "select id,type,amount,currency,idempotency_key,created_at from ledger_entries where commitment_id=$1 order by created_at", [commitmentId]
+)).rows.map((row) => ({ id: row.id, type: row.type, amount: Number(row.amount), currency: row.currency.trim(), idempotencyKey: row.idempotency_key, createdAt: row.created_at }));
+
+async function settlementReceipt(commitment, client = pool) {
+  const ledger = await ledgerRows(commitment.id, client);
+  const allocationRow = (await client.query("select * from breakage_allocations where commitment_id=$1 order by created_at desc limit 1", [commitment.id])).rows[0];
+  const sum = (type) => ledger.filter((entry) => entry.type === type).reduce((total, entry) => total + entry.amount, 0);
+  return {
+    commitmentId: commitment.id, objective: commitment.objective, status: commitment.status, outcome: commitment.outcome,
+    committed: Number(commitment.stake_amount), currency: commitment.currency.trim(),
+    atRisk: Math.round((Number(commitment.stake_amount) * Number(commitment.rules?.maxForfeiturePct || 0)) / 100),
+    returned: sum("return"), forfeited: sum("forfeit"), rulesVersion: commitment.rules_version, ledger,
+    allocation: allocationRow ? { toSuccessPool: Number(allocationRow.to_success_pool), toPlatform: Number(allocationRow.to_platform), toInstitution: Number(allocationRow.to_institution) } : { toSuccessPool: 0, toPlatform: 0, toInstitution: 0 }
+  };
+}
+
 async function saveEvidence(body, commitmentId) {
   const extension = EVIDENCE_TYPES[body.contentType];
   const encoded = String(body.dataBase64 || "");
@@ -195,6 +213,22 @@ export async function handlePostgresApi(req, res, url, send) {
     const rows = await pool.query("select * from commitments where user_id=$1 order by created_at desc", [user.id]);
     return send(200, await Promise.all(rows.rows.map(commitmentView)));
   }
+  if (method === "GET" && path.join("/") === "dashboard/summary") {
+    const rows = (await pool.query("select * from commitments where user_id=$1 and status <> 'draft'", [user.id])).rows;
+    const active = rows.filter((row) => ["active", "pending_verification"].includes(row.status));
+    const completed = rows.filter((row) => ["successful", "unsuccessful", "settled"].includes(row.status));
+    const settledIds = rows.filter((row) => row.status === "settled").map((row) => row.id);
+    const totals = settledIds.length ? (await pool.query(`select type, coalesce(sum(amount),0)::bigint as amount from ledger_entries
+      where commitment_id = any($1) group by type`, [settledIds])).rows : [];
+    const amount = (type) => Number(totals.find((row) => row.type === type)?.amount || 0);
+    return send(200, {
+      active: active.length, completed: completed.length,
+      completionRate: rows.length ? Math.floor((rows.filter((row) => row.outcome === "successful").length * 100) / rows.length) : 0,
+      committed: rows.reduce((sum, row) => sum + Number(row.stake_amount), 0), returned: amount("return"), forfeited: amount("forfeit"),
+      notifications: Number((await pool.query("select count(*)::int as count from notifications where user_id=$1", [user.id])).rows[0].count),
+      upcoming: active.sort((left, right) => new Date(left.deadline) - new Date(right.deadline)).slice(0, 5).map((row) => ({ id: row.id, objective: row.objective, deadline: row.deadline }))
+    });
+  }
   if (method === "POST" && path.length === 1 && path[0] === "commitments") {
     const body = await readJson(req);
     if (!String(body.objective || "").trim() || !String(body.deadline || "").trim()) return send(422, { error: "objective and deadline are required" });
@@ -209,6 +243,10 @@ export async function handlePostgresApi(req, res, url, send) {
   const commitment = await ownedCommitment(path[1], user.id);
   if (!commitment) return send(404, { error: "not-found" });
   if (method === "GET" && path.length === 2) return send(200, await commitmentView(commitment));
+  if (method === "GET" && path[2] === "outcome") {
+    if (commitment.status !== "settled") return send(409, { error: "not settled yet", status: commitment.status });
+    return send(200, await settlementReceipt(commitment));
+  }
 
   if (method === "POST" && path[2] === "activate") {
     if (commitment.status !== "draft") return send(409, { error: "only draft can be activated", status: commitment.status });
@@ -255,6 +293,23 @@ export async function handlePostgresApi(req, res, url, send) {
       const updated = await client.query("update commitments set status=$1,outcome=$1,updated_at=now() where id=$2 returning *", [body.verdict, commitment.id]);
       await client.query("COMMIT");
       return send(200, await commitmentView(updated.rows[0]));
+    } catch (error) { await client.query("ROLLBACK"); throw error; } finally { client.release(); }
+  }
+  if (method === "POST" && path[2] === "settle") {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      const locked = (await client.query("select * from commitments where id=$1 and user_id=$2 for update", [commitment.id, user.id])).rows[0];
+      if (locked.status === "settled") { await client.query("COMMIT"); return send(200, { settled: true, repeated: true, ...(await settlementReceipt(locked)) }); }
+      if (!["successful", "unsuccessful"].includes(locked.status)) { await client.query("ROLLBACK"); return send(409, { error: "only verified commitments can settle", status: locked.status }); }
+      const plan = buildSettlement(locked);
+      for (const entry of plan.entries) await client.query(`insert into ledger_entries (id,commitment_id,type,amount,currency,idempotency_key)
+        values ($1,$2,$3,$4,$5,$6)`, [randomUUID(), locked.id, entry.type, entry.amount, locked.currency, entry.idempotencyKey]);
+      await client.query(`insert into breakage_allocations (id,commitment_id,to_success_pool,to_platform,to_institution)
+        values ($1,$2,$3,$4,$5)`, [randomUUID(), locked.id, plan.allocation.toSuccessPool, plan.allocation.toPlatform, plan.allocation.toInstitution]);
+      const updated = (await client.query("update commitments set status='settled', updated_at=now() where id=$1 returning *", [locked.id])).rows[0];
+      await client.query("COMMIT");
+      return send(200, { settled: true, repeated: false, ...(await settlementReceipt(updated)) });
     } catch (error) { await client.query("ROLLBACK"); throw error; } finally { client.release(); }
   }
   return send(404, { error: "not-found" });
