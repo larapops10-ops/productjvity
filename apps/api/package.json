@@ -7,6 +7,7 @@
     "start": "node src/index.js",
     "db:check": "node src/db-check.js",
     "db:import-json": "node src/import-json-to-postgres.js",
+    "db:verify-import": "node src/verify-postgres-import.js",
     "validate:rules": "node ../../packages/rules/validate.mjs ../../packages/rules/fixtures/ngn-100k-50pct.json"
   },
   "dependencies": {

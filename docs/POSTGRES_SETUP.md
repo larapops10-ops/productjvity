@@ -22,3 +22,9 @@ After verifying the database connection, run this once. It inserts records witho
 ```sh
 /Users/lara/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node apps/api/src/import-json-to-postgres.js
 ```
+
+Verify the imported records and their important links:
+
+```sh
+/Users/lara/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node apps/api/src/verify-postgres-import.js
+```
