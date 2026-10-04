@@ -31,6 +31,28 @@ async function main() {
       add("users");
     }
 
+    // Older prototype records used a built-in "demo-user" without storing it in
+    // the users collection. Create an inert legacy account for any such referenced
+    // ID so the historical relationships remain intact. It has no password or
+    // session and therefore cannot be used to sign in.
+    const knownUserIds = new Set((data.users || []).map((user) => user.id));
+    const referencedUserIds = new Set([
+      ...(data.institutions || []).map((institution) => institution.ownerId),
+      ...(data.commitments || []).map((commitment) => commitment.userId),
+      ...(data.commitments || []).flatMap((commitment) => (commitment.verifications || []).map((decision) => decision.decidedBy)),
+      ...(data.disputes || []).map((dispute) => dispute.reporterId),
+      ...(data.notifications || []).map((notification) => notification.userId),
+      ...(data.audit || []).map((audit) => audit.actorId)
+    ]);
+    for (const userId of referencedUserIds) {
+      if (!userId || knownUserIds.has(userId)) continue;
+      await insert(client, `insert into users (id,email,name,role,created_at)
+        values ($1,$2,$3,'user',$4) on conflict (id) do nothing`, [
+        userId, `legacy-${userId}@invalid.local`, "Legacy prototype account", new Date().toISOString()
+      ]);
+      add("legacy_users");
+    }
+
     for (const session of data.sessions || []) {
       await insert(client, `insert into sessions (id,user_id,token_digest,expires_at,created_at)
         values ($1,$2,$3,$4,$5) on conflict (id) do nothing`, [
