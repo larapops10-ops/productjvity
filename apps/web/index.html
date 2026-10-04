@@ -77,8 +77,8 @@
 </section>
 <section class="page" id="p-account">
 <div class="eyebrow">ACCOUNT</div><h1>Sign in</h1><p class="sub" id="accountState">Create an account to keep your commitments private.</p>
-<div class="card"><div class="eyebrow">Create account</div><div style="display:grid;gap:10px;margin-top:10px"><input id="signUpName" placeholder="Your name"><input id="signUpEmail" type="email" placeholder="Email address"><input id="signUpPassword" type="password" placeholder="Password (at least 10 characters)"><button type="button" class="btn btn-p" id="signUp">Create account</button></div></div>
-<div class="card"><div class="eyebrow">Already have an account?</div><div style="display:grid;gap:10px;margin-top:10px"><input id="loginEmail" type="email" placeholder="Email address"><input id="loginPassword" type="password" placeholder="Password"><button type="button" class="btn btn-s" id="login">Sign in</button><button type="button" class="btn btn-s" id="logout" style="display:none">Sign out</button></div></div>
+<div class="card"><div class="eyebrow">Create account</div><div style="display:grid;gap:10px;margin-top:10px"><input id="signUpName" placeholder="Your name"><input id="signUpEmail" type="email" placeholder="Email address"><div class="row" style="margin:0"><input id="signUpPassword" type="password" placeholder="Password (at least 10 characters)" style="flex:1;min-width:180px"><button type="button" class="btn btn-s" id="showSignUpPassword">Show</button></div><button type="button" class="btn btn-p" id="signUp">Create account</button></div></div>
+<div class="card"><div class="eyebrow">Already have an account?</div><div style="display:grid;gap:10px;margin-top:10px"><input id="loginEmail" type="email" placeholder="Email address"><div class="row" style="margin:0"><input id="loginPassword" type="password" placeholder="Password" style="flex:1;min-width:180px"><button type="button" class="btn btn-s" id="showLoginPassword">Show</button></div><button type="button" class="btn btn-s" id="login">Sign in</button><button type="button" class="btn btn-s" id="logout" style="display:none">Sign out</button></div></div>
 </section>
 </main></div>
 <script>
@@ -121,6 +121,9 @@ function saveSession(r){ authToken=r.body.token; localStorage.setItem("productjv
 $("signUp").addEventListener("click",function(){ call("POST","/auth/signup",{name:$("signUpName").value.trim(),email:$("signUpEmail").value.trim(),password:$("signUpPassword").value}).then(function(r){ if(r.status===201) saveSession(r); else err(r.body.error||"Could not create account"); }); });
 $("login").addEventListener("click",function(){ call("POST","/auth/login",{email:$("loginEmail").value.trim(),password:$("loginPassword").value}).then(function(r){ if(r.status===200) saveSession(r); else err(r.body.error||"Could not sign in"); }); });
 $("logout").addEventListener("click",function(){ call("POST","/auth/logout",{}).then(function(){ authToken=""; localStorage.removeItem("productjvity_auth_token"); loadAccount(); load(); }); });
+function wirePasswordToggle(inputId,buttonId){ var input=$(inputId),button=$(buttonId); button.addEventListener("click",function(){ var showing=input.type==="text"; input.type=showing?"password":"text"; button.textContent=showing?"Show":"Hide"; }); }
+wirePasswordToggle("signUpPassword","showSignUpPassword");
+wirePasswordToggle("loginPassword","showLoginPassword");
 function load(){
   call("GET","/dashboard/summary").then(function(s){
     if(s.status===200){ var d=s.body;
