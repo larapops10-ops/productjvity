@@ -102,6 +102,23 @@ async function ownedCommitment(id, userId) {
   return result.rows[0] || null;
 }
 
+async function programmeView(programme) {
+  const rules = (await pool.query("select version,rules,effective_from from programme_rules where programme_id=$1 order by version desc limit 1", [programme.id])).rows[0];
+  const commitments = (await pool.query("select * from commitments where programme_id=$1", [programme.id])).rows;
+  const successful = commitments.filter((row) => row.outcome === "successful").length;
+  return {
+    id: programme.id, institutionId: programme.institution_id, name: programme.name, objective: programme.objective,
+    startsAt: programme.starts_at, endsAt: programme.ends_at, eligibility: programme.eligibility, status: programme.status,
+    visibility: programme.eligibility?.visibility || "aggregate", currentVersion: rules?.version || 1,
+    rulesVersions: rules ? [{ version: rules.version, rules: rules.rules, effectiveFrom: rules.effective_from }] : [],
+    results: { participants: new Set(commitments.map((row) => row.user_id)).size, commitments: commitments.length, successful, unsuccessful: commitments.filter((row) => row.outcome === "unsuccessful").length, completionRate: commitments.length ? Math.floor((successful * 100) / commitments.length) : 0 }
+  };
+}
+
+async function institutionOwned(id, userId) {
+  return (await pool.query("select * from institutions where id=$1 and owner_id=$2", [id, userId])).rows[0] || null;
+}
+
 const ledgerRows = async (commitmentId, client = pool) => (await client.query(
   "select id,type,amount,currency,idempotency_key,created_at from ledger_entries where commitment_id=$1 order by created_at", [commitmentId]
 )).rows.map((row) => ({ id: row.id, type: row.type, amount: Number(row.amount), currency: row.currency.trim(), idempotencyKey: row.idempotency_key, createdAt: row.created_at }));
@@ -246,6 +263,48 @@ export async function handlePostgresApi(req, res, url, send) {
       sent += 1;
     }
     return send(200, { sent });
+  }
+  if (method === "GET" && path.length === 1 && path[0] === "institutions") {
+    const rows = await pool.query("select * from institutions where owner_id=$1 order by created_at desc", [user.id]);
+    return send(200, rows.rows.map((row) => ({ id: row.id, name: row.name, ownerId: row.owner_id, status: row.status, createdAt: row.created_at })));
+  }
+  if (method === "POST" && path.length === 1 && path[0] === "institutions") {
+    const body = await readJson(req);
+    if (!String(body.name || "").trim()) return send(422, { error: "name is required" });
+    const created = await pool.query("insert into institutions (id,name,owner_id,status) values ($1,$2,$3,'active') returning *", [randomUUID(), String(body.name).trim(), user.id]);
+    const row = created.rows[0];
+    return send(201, { id: row.id, name: row.name, ownerId: row.owner_id, status: row.status, createdAt: row.created_at });
+  }
+  if (method === "GET" && path.length === 1 && path[0] === "programmes") {
+    const rows = await pool.query("select * from programmes order by created_at desc");
+    return send(200, await Promise.all(rows.rows.map(programmeView)));
+  }
+  if (method === "POST" && path.length === 1 && path[0] === "programmes") {
+    const body = await readJson(req);
+    const institution = await institutionOwned(body.institutionId, user.id);
+    const rules = body.rules || {};
+    if (!institution) return send(403, { error: "you must own the institution" });
+    if (!String(body.name || "").trim() || !rules.objective || !rules.startsAt || !rules.endsAt) return send(422, { error: "name and complete programme rules are required" });
+    const id = randomUUID();
+    const eligibility = { ...(body.eligibility || {}), visibility: "aggregate" };
+    const created = await pool.query(`insert into programmes (id,institution_id,name,objective,starts_at,ends_at,eligibility,status)
+      values ($1,$2,$3,$4,$5,$6,$7::jsonb,'active') returning *`, [id, institution.id, String(body.name).trim(), rules.objective, rules.startsAt, rules.endsAt, JSON.stringify(eligibility)]);
+    await pool.query("insert into programme_rules (id,programme_id,version,rules,rules_hash) values ($1,$2,1,$3::jsonb,$4)", [randomUUID(), id, JSON.stringify(rules), `local-${id}-v1`]);
+    return send(201, await programmeView(created.rows[0]));
+  }
+  if (path[0] === "programmes" && path[1]) {
+    const programme = (await pool.query("select * from programmes where id=$1", [path[1]])).rows[0];
+    if (!programme) return send(404, { error: "not-found" });
+    if (method === "GET" && path.length === 2) return send(200, await programmeView(programme));
+    if (method === "POST" && path[2] === "enrol") {
+      const body = await readJson(req); const view = await programmeView(programme);
+      if (programme.status !== "active") return send(409, { error: "programme is not accepting enrolments", status: programme.status });
+      if (body.acceptedRulesVersion !== view.currentVersion) return send(409, { error: "rules changed; accept the current version", currentVersion: view.currentVersion });
+      const id = randomUUID(); const rules = view.rulesVersions[0].rules;
+      const created = await pool.query(`insert into commitments (id,user_id,programme_id,rules_version,rules,objective,deadline,stake_amount,currency,status)
+        values ($1,$2,$3,$4,$5::jsonb,$6,$7,$8,$9,'draft') returning *`, [id, user.id, programme.id, view.currentVersion, JSON.stringify(rules), rules.objective, rules.endsAt, rules.stake?.amount || 0, rules.stake?.currency || "NGN"]);
+      return send(201, await commitmentView(created.rows[0]));
+    }
   }
   if (path[0] === "users" && path[1]) {
     const target = (await pool.query("select * from users where id=$1", [path[1]])).rows[0];
