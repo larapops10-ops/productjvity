@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { pool } from "./database.js";
 import { buildSettlement } from "./settlement.js";
 import { queueAiAssistedReview } from "./ai-review.js";
+import { sendPartnerInvitation } from "./email.js";
 
 const PASSWORD_ITERATIONS = 210_000;
 const SESSION_LIFETIME_SECONDS = 60 * 60 * 24 * 14;
@@ -270,7 +271,8 @@ export async function handlePostgresApi(req, res, url, send) {
     if (email === user.email.toLowerCase()) return send(422, { error: "choose someone else to review your goal" });
     const created = await pool.query(`insert into accountability_partners (id,owner_id,email,name,status) values ($1,$2,$3,$4,'invited')
       on conflict (owner_id,email) do update set name=excluded.name returning *`, [randomUUID(), user.id, email, String(body.name || "").trim() || null]);
-    return send(201, { id: created.rows[0].id, email: created.rows[0].email, name: created.rows[0].name, status: created.rows[0].status });
+    const delivery = await sendPartnerInvitation({ ownerName: user.name, recipientName: created.rows[0].name, recipientEmail: created.rows[0].email });
+    return send(201, { id: created.rows[0].id, email: created.rows[0].email, name: created.rows[0].name, status: created.rows[0].status, emailSent: delivery.sent });
   }
   if (method === "GET" && path.length === 1 && path[0] === "review-invitations") {
     const rows = await pool.query(`select ap.id,ap.name,ap.email,ap.status,u.name as owner_name,u.email as owner_email

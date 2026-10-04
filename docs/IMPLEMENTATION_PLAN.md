@@ -237,7 +237,7 @@ Immediate next actions:
 ### A. Endpoint catalog (v1 target)
 Auth/users: `POST /auth/signup|login`, `GET /me`
 Commitments: `POST /commitments`, `GET /commitments/:id`, `POST /commitments/:id/evidence`, `POST /commitments/:id/submit-for-verification`, `POST /commitments/:id/verify`, `POST /commitments/:id/settle`, `GET /commitments/:id/outcome`
-Accountability: `GET|POST /accountability-partners`, `POST /accountability-partners/:id/accept`, `GET /review-invitations`, `GET /review-queue`, `GET /reviews/:commitmentId`, `POST /reviews/:commitmentId/decision`, `GET /awards`
+Accountability: `GET|POST /accountability-partners`, `POST /accountability-partners/:id/accept`, `GET /review-invitations`, `GET /review-queue`, `GET /reviews/:commitmentId`, `POST /reviews/:commitmentId/decision`, `GET /awards`. The invitation is always available in-app; when configured, the ZeptoMail adapter sends the same invitation by email without exposing credentials to the browser.
 AI review: `POST /commitments/:id/ai-review`, `GET /commitments/:id/ai-review`, `POST /ai-reviews/:id/decision`
 Programmes: `POST /programmes`, `GET /programmes/:id`, `POST /programmes/:id/enrol`, `GET /programmes/:id/progress`, `GET /programmes/:id/results`
 Disputes: `POST /disputes`, `POST /disputes/:id/review`
