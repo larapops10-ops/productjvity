@@ -1,34 +1,37 @@
-// Zero-dependency API skeleton (Phase 1). No npm install needed.
-// Run: PORT=3001 node apps/api/src/index.js
+// PostgreSQL-backed API foundation. It runs beside the existing Ruby prototype
+// during migration, on port 3002 by default.
 import { createServer } from "node:http";
 import { databaseHealth } from "./database.js";
+import { handlePostgresApi } from "./postgres-api.js";
 
-const PORT = process.env.PORT || 3001;
+const PORT = Number(process.env.PORT || 3002);
+
+function send(res, status, body) {
+  res.writeHead(status, {
+    "content-type": "application/json; charset=utf-8",
+    "access-control-allow-origin": "*",
+    "access-control-allow-methods": "GET, POST, OPTIONS",
+    "access-control-allow-headers": "Content-Type, Authorization"
+  });
+  res.end(JSON.stringify(body));
+}
 
 const server = createServer(async (req, res) => {
-  if (req.url === "/health") {
-    res.writeHead(200, { "content-type": "application/json" });
-    res.end(JSON.stringify({ ok: true, service: "productjvity-api", phase: 1 }));
-    return;
+  if (req.method === "OPTIONS") return send(res, 204, {});
+  const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
+  try {
+    if (url.pathname === "/health") return send(res, 200, { ok: true, service: "productjvity-postgres-api", phase: "migration" });
+    if (url.pathname === "/db-health") return send(res, 200, { ok: true, database: await databaseHealth() });
+    if (url.pathname === "/openapi.json") return send(res, 200, {
+      openapi: "3.0.0", info: { title: "Productjvity PostgreSQL API", version: "0.2.0" },
+      paths: { "/v1/auth/signup": {}, "/v1/auth/login": {}, "/v1/me": {}, "/v1/commitments": {} }
+    });
+    if (url.pathname === "/v1" || url.pathname.startsWith("/v1/")) return handlePostgresApi(req, res, url, (status, body) => send(res, status, body));
+    return send(res, 404, { error: "not-found" });
+  } catch (error) {
+    console.error(error);
+    return send(res, 500, { error: "internal-server-error" });
   }
-  if (req.url === "/openapi.json") {
-    res.writeHead(200, { "content-type": "application/json" });
-    res.end(JSON.stringify({ openapi: "3.0.0", info: { title: "Productjvity API", version: "0.1.0" }, paths: {} }));
-    return;
-  }
-  if (req.url === "/db-health") {
-    try {
-      const database = await databaseHealth();
-      res.writeHead(200, { "content-type": "application/json" });
-      res.end(JSON.stringify({ ok: true, database }));
-    } catch {
-      res.writeHead(503, { "content-type": "application/json" });
-      res.end(JSON.stringify({ ok: false, error: "database-unavailable" }));
-    }
-    return;
-  }
-  res.writeHead(404, { "content-type": "application/json" });
-  res.end(JSON.stringify({ error: "not-found" }));
 });
 
-server.listen(PORT, () => console.log(`api listening on ${PORT}`));
+server.listen(PORT, () => console.log(`Productjvity PostgreSQL API listening on ${PORT}`));

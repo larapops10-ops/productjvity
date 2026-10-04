@@ -1,0 +1,202 @@
+import { createHash, pbkdf2Sync, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
+import { pool } from "./database.js";
+
+const PASSWORD_ITERATIONS = 210_000;
+const SESSION_LIFETIME_SECONDS = 60 * 60 * 24 * 14;
+
+const publicUser = (row) => ({
+  id: row.id, email: row.email, name: row.name, role: row.role,
+  consentProfilePublic: row.consent_profile_public, createdAt: row.created_at
+});
+
+const defaultRules = (body) => ({
+  objective: body.objective,
+  startsAt: new Date().toISOString(),
+  endsAt: body.deadline,
+  measurement: body.successCriteria || "Self-attested completion",
+  evidenceRequired: [],
+  successCriteria: body.successCriteria || "Marked complete by deadline",
+  failureCriteria: "Not completed by deadline",
+  stake: { amount: body.stakeAmount || 0, currency: body.currency || "NGN" },
+  maxForfeiturePct: body.maxForfeiturePct || 0,
+  rewardFormula: "points only (no money in prototype)",
+  breakageSplit: body.breakageSplit || { successPct: 70, platformPct: 20, institutionPct: 10 },
+  platformFees: "none in prototype", exceptions: "none", disputeProcess: "contact support"
+});
+
+function passwordRecord(password) {
+  const salt = randomBytes(16);
+  const digest = pbkdf2Sync(password, salt, PASSWORD_ITERATIONS, 32, "sha256");
+  return { salt: salt.toString("base64"), digest: digest.toString("base64") };
+}
+
+function passwordMatches(password, record) {
+  if (!record?.salt || !record?.digest) return false;
+  const expected = Buffer.from(record.digest, "base64");
+  const actual = pbkdf2Sync(password, Buffer.from(record.salt, "base64"), PASSWORD_ITERATIONS, expected.length, "sha256");
+  return expected.length === actual.length && timingSafeEqual(expected, actual);
+}
+
+export function readJson(req) {
+  return new Promise((resolve, reject) => {
+    let raw = "";
+    req.on("data", (chunk) => {
+      raw += chunk;
+      if (raw.length > 6 * 1024 * 1024) reject(new Error("Request is too large"));
+    });
+    req.on("end", () => {
+      if (!raw) return resolve({});
+      try { resolve(JSON.parse(raw)); } catch { reject(new Error("Invalid JSON body")); }
+    });
+    req.on("error", reject);
+  });
+}
+
+export async function currentUser(req) {
+  const token = req.headers.authorization?.replace(/^Bearer\s+/i, "");
+  if (!token) return null;
+  const digest = createHash("sha256").update(token).digest("hex");
+  const result = await pool.query(`select u.* from sessions s join users u on u.id = s.user_id
+    where s.token_digest = $1 and s.expires_at > now()`, [digest]);
+  return result.rows[0] || null;
+}
+
+async function issueSession(userId) {
+  const token = randomBytes(32).toString("base64url");
+  const digest = createHash("sha256").update(token).digest("hex");
+  await pool.query(`insert into sessions (id,user_id,token_digest,expires_at)
+    values ($1,$2,$3,now() + ($4 * interval '1 second'))`, [randomUUID(), userId, digest, SESSION_LIFETIME_SECONDS]);
+  return token;
+}
+
+async function commitmentView(row) {
+  const [milestones, evidence, verifications] = await Promise.all([
+    pool.query("select id,title,due_at,required,done from milestones where commitment_id=$1 order by created_at", [row.id]),
+    pool.query("select id,milestone_id,storage_key,file_url,content_type,size_bytes,sha256,note,submitted_at from evidence where commitment_id=$1 order by submitted_at", [row.id]),
+    pool.query("select id,method,verdict,reason,decided_by_id,decided_at from verification_decisions where commitment_id=$1 order by decided_at", [row.id])
+  ]);
+  const done = milestones.rows.filter((milestone) => milestone.done).length;
+  const progressPct = milestones.rows.length ? Math.floor((done * 100) / milestones.rows.length) : row.status === "settled" ? 100 : 0;
+  return {
+    id: row.id, userId: row.user_id, programmeId: row.programme_id, rulesVersion: row.rules_version,
+    rules: row.rules, objective: row.objective, deadline: row.deadline, stakeAmount: Number(row.stake_amount),
+    currency: row.currency.trim(), status: row.status, outcome: row.outcome, createdAt: row.created_at,
+    milestones: milestones.rows.map((m) => ({ id: m.id, title: m.title, dueAt: m.due_at, required: m.required, done: m.done })),
+    evidence: evidence.rows.map((e) => ({ id: e.id, milestoneId: e.milestone_id, storageKey: e.storage_key, fileUrl: e.file_url, contentType: e.content_type, sizeBytes: Number(e.size_bytes), sha256: e.sha256, note: e.note, submittedAt: e.submitted_at })),
+    verifications: verifications.rows.map((v) => ({ id: v.id, method: v.method, verdict: v.verdict, reason: v.reason, decidedBy: v.decided_by_id, decidedAt: v.decided_at })),
+    progressPct
+  };
+}
+
+async function ownedCommitment(id, userId) {
+  const result = await pool.query("select * from commitments where id=$1 and user_id=$2", [id, userId]);
+  return result.rows[0] || null;
+}
+
+export async function handlePostgresApi(req, res, url, send) {
+  const path = url.pathname.replace(/^\/v1/, "").split("/").filter(Boolean);
+  const method = req.method;
+
+  if (method === "POST" && path.join("/") === "auth/signup") {
+    const body = await readJson(req);
+    const name = String(body.name || "").trim();
+    const email = String(body.email || "").trim().toLowerCase();
+    const password = String(body.password || "");
+    if (!name || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return send(422, { error: "name and a valid email are required" });
+    if (password.length < 10) return send(422, { error: "password must be at least 10 characters" });
+    const user = { id: randomUUID(), name, email, password: passwordRecord(password) };
+    try {
+      const inserted = await pool.query(`insert into users (id,email,name,role,password_hash)
+        values ($1,$2,$3,'user',$4::jsonb) returning *`, [user.id, user.email, user.name, JSON.stringify(user.password)]);
+      const token = await issueSession(user.id);
+      return send(201, { token, user: publicUser(inserted.rows[0]) });
+    } catch (error) {
+      if (error.code === "23505") return send(409, { error: "an account already exists for this email" });
+      throw error;
+    }
+  }
+
+  if (method === "POST" && path.join("/") === "auth/login") {
+    const body = await readJson(req);
+    const email = String(body.email || "").trim().toLowerCase();
+    const result = await pool.query("select * from users where lower(email)=lower($1)", [email]);
+    const user = result.rows[0];
+    if (!user || !passwordMatches(String(body.password || ""), user.password_hash)) return send(401, { error: "email or password is incorrect" });
+    const token = await issueSession(user.id);
+    return send(200, { token, user: publicUser(user) });
+  }
+
+  const user = await currentUser(req);
+  if (!user) return send(401, { error: "sign-in required" });
+
+  if (method === "GET" && path.join("/") === "me") return send(200, { user: publicUser(user) });
+  if (method === "POST" && path.join("/") === "auth/logout") {
+    const token = req.headers.authorization?.replace(/^Bearer\s+/i, "");
+    const digest = createHash("sha256").update(token || "").digest("hex");
+    await pool.query("delete from sessions where token_digest=$1", [digest]);
+    return send(200, { ok: true });
+  }
+
+  if (method === "GET" && path.length === 1 && path[0] === "commitments") {
+    const rows = await pool.query("select * from commitments where user_id=$1 order by created_at desc", [user.id]);
+    return send(200, await Promise.all(rows.rows.map(commitmentView)));
+  }
+  if (method === "POST" && path.length === 1 && path[0] === "commitments") {
+    const body = await readJson(req);
+    if (!String(body.objective || "").trim() || !String(body.deadline || "").trim()) return send(422, { error: "objective and deadline are required" });
+    const id = randomUUID();
+    const rules = defaultRules(body);
+    const result = await pool.query(`insert into commitments (id,user_id,rules,objective,deadline,stake_amount,currency,status)
+      values ($1,$2,$3::jsonb,$4,$5,$6,$7,'draft') returning *`, [id, user.id, JSON.stringify(rules), String(body.objective).trim(), body.deadline, body.stakeAmount || 0, body.currency || "NGN"]);
+    return send(201, await commitmentView(result.rows[0]));
+  }
+
+  if (path[0] !== "commitments" || !path[1]) return send(404, { error: "not-found" });
+  const commitment = await ownedCommitment(path[1], user.id);
+  if (!commitment) return send(404, { error: "not-found" });
+  if (method === "GET" && path.length === 2) return send(200, await commitmentView(commitment));
+
+  if (method === "POST" && path[2] === "activate") {
+    if (commitment.status !== "draft") return send(409, { error: "only draft can be activated", status: commitment.status });
+    const updated = await pool.query("update commitments set status='active', updated_at=now() where id=$1 returning *", [commitment.id]);
+    return send(200, await commitmentView(updated.rows[0]));
+  }
+  if (method === "POST" && path[2] === "milestones" && path.length === 3) {
+    const body = await readJson(req);
+    if (!String(body.title || "").trim()) return send(422, { error: "title is required" });
+    const id = randomUUID();
+    const created = await pool.query(`insert into milestones (id,commitment_id,title,due_at,required,done)
+      values ($1,$2,$3,$4,true,false) returning *`, [id, commitment.id, String(body.title).trim(), body.dueAt || null]);
+    const m = created.rows[0];
+    return send(201, { id: m.id, title: m.title, dueAt: m.due_at, required: m.required, done: m.done });
+  }
+  if (method === "POST" && path[2] === "milestones" && path[4] === "toggle") {
+    const body = await readJson(req);
+    const updated = await pool.query(`update milestones set done=coalesce($1, not done)
+      where id=$2 and commitment_id=$3 returning *`, [typeof body.done === "boolean" ? body.done : null, path[3], commitment.id]);
+    if (!updated.rows[0]) return send(404, { error: "not-found" });
+    const m = updated.rows[0];
+    return send(200, { id: m.id, title: m.title, dueAt: m.due_at, required: m.required, done: m.done });
+  }
+  if (method === "POST" && path[2] === "submit-for-verification") {
+    if (commitment.status !== "active") return send(409, { error: "only active can be submitted", status: commitment.status });
+    const updated = await pool.query("update commitments set status='pending_verification', updated_at=now() where id=$1 returning *", [commitment.id]);
+    return send(200, await commitmentView(updated.rows[0]));
+  }
+  if (method === "POST" && path[2] === "verify") {
+    const body = await readJson(req);
+    if (commitment.status !== "pending_verification") return send(409, { error: "only pending_verification can be verified", status: commitment.status });
+    if (!["self_attest", "manual_review"].includes(body.method)) return send(422, { error: "method must be self_attest or manual_review" });
+    if (!["successful", "unsuccessful"].includes(body.verdict)) return send(422, { error: "verdict must be successful or unsuccessful" });
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query(`insert into verification_decisions (id,commitment_id,method,verdict,reason,decided_by_id)
+        values ($1,$2,$3,$4,$5,$6)`, [randomUUID(), commitment.id, body.method, body.verdict, body.reason || null, user.id]);
+      const updated = await client.query("update commitments set status=$1,outcome=$1,updated_at=now() where id=$2 returning *", [body.verdict, commitment.id]);
+      await client.query("COMMIT");
+      return send(200, await commitmentView(updated.rows[0]));
+    } catch (error) { await client.query("ROLLBACK"); throw error; } finally { client.release(); }
+  }
+  return send(404, { error: "not-found" });
+}
