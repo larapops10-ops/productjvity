@@ -116,6 +116,13 @@ Concrete build:
 
 ## 5. Stage 2A — AI-assisted evidence review (human-in-the-loop)
 
+### Accountability and awards policy
+
+- A personal-growth goal with no stake may use self-review and earns milestone badges or a goal award.
+- A goal with a stake, penalty, or other adverse consequence must choose independent review before it can start: an accepted accountability partner, institution reviewer, or platform reviewer. Self-review is not permitted for these goals.
+- Partners are invited by email, must explicitly accept, and can recommend `completed`, `needs_more_proof`, or `not_completed`; they never settle money. Reviewer non-response routes to a fair waiting/manual-review state, never automatic failure.
+- Milestone completion awards a badge; completed group programmes can issue a certificate. Awards are separate from money and are stored in an auditable awards ledger.
+
 Objective: use AI to help reviewers assess evidence without allowing an automated model to independently cause a financial forfeiture.
 
 Scope and safeguards:

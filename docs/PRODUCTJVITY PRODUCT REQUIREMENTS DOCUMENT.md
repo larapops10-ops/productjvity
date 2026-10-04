@@ -555,3 +555,14 @@ Premium, calm, minimal consumer product (not generic SaaS). Preview: `design.htm
 - Rewards makes progress tangible: points, streaks, goals, milestones, unlocked/next.
 - Goal creation uses progressive disclosure starting from "What do you want to accomplish?"
 - Mobile is first-class: bottom nav, large targets, minimal scroll; subtle animation only for progress/feedback.
+
+---
+
+**24. Accountability, Review and Awards — Decisions (4 Oct 2026)**
+
+- Personal-growth goals with no monetary or adverse consequence may use self-review.
+- Any goal with a stake, penalty or forfeiture requires independent review before it starts: an accepted accountability partner, an institution reviewer, or a platform reviewer. Self-review cannot trigger a penalty.
+- An accountability partner is a trusted person invited by the goal owner. They may recommend **Completed**, **Needs more proof**, or **Not completed**; the platform provides a fair dispute and manual-review route.
+- Reviewer silence must never cause automatic failure. The goal moves to waiting for review until an independent decision is available.
+- Productjvity rewards progress separately from money: milestone badges, goal-completion awards and, for eligible group programmes, certificates.
+- AI may assist a reviewer but can never independently verify a penalised goal, settle funds, or apply a forfeiture.

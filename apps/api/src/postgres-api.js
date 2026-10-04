@@ -325,10 +325,11 @@ export async function handlePostgresApi(req, res, url, send) {
   if (method === "POST" && path.length === 1 && path[0] === "commitments") {
     const body = await readJson(req);
     if (!String(body.objective || "").trim() || !String(body.deadline || "").trim()) return send(422, { error: "objective and deadline are required" });
+    if (Number(body.stakeAmount || 0) > 0 && !["partner", "institution", "platform"].includes(body.reviewMode)) return send(422, { error: "an independent reviewer is required for a goal with a stake" });
     const id = randomUUID();
     const rules = defaultRules(body);
-    const result = await pool.query(`insert into commitments (id,user_id,rules,objective,deadline,stake_amount,currency,status)
-      values ($1,$2,$3::jsonb,$4,$5,$6,$7,'draft') returning *`, [id, user.id, JSON.stringify(rules), String(body.objective).trim(), body.deadline, body.stakeAmount || 0, body.currency || "NGN"]);
+    const result = await pool.query(`insert into commitments (id,user_id,rules,objective,deadline,stake_amount,currency,status,review_mode,reviewer_partner_id)
+      values ($1,$2,$3::jsonb,$4,$5,$6,$7,'draft',$8,$9) returning *`, [id, user.id, JSON.stringify(rules), String(body.objective).trim(), body.deadline, body.stakeAmount || 0, body.currency || "NGN", body.reviewMode || "self", body.reviewerPartnerId || null]);
     for (const title of (body.milestones || []).map((item) => String(item).trim()).filter(Boolean)) await pool.query("insert into milestones (id,commitment_id,title,required,done) values ($1,$2,$3,true,false)", [randomUUID(), id, title]);
     return send(201, await commitmentView(result.rows[0]));
   }
