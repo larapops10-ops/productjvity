@@ -129,6 +129,7 @@ function load(){
     }
   });
   call("GET","/commitments").then(function(r){
+    if(r.status===401){ go("account"); return; }
     if(r.status!==200){ err("API error "+r.status+": "+JSON.stringify(r.body)); return; }
     $("apiState").textContent = r.body.length+" commitment(s) · API connected";
     var L=$("list"); L.innerHTML = r.body.length?"":"<p class='sub'>None yet — create one under New.</p>";
