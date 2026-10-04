@@ -7,6 +7,7 @@ require "securerandom"
 require "fileutils"
 require "date"
 require "base64"
+require "digest"
 require_relative "../../packages/settlement/settle"
 
 PORT  = (ENV["PORT"] || 3001).to_i
@@ -183,7 +184,7 @@ rescue StandardError
   {}
 end
 
-def save_evidence_file(body)
+def save_evidence_file(body, existing_evidence = [])
   content_type = body["contentType"]
   extension = EVIDENCE_TYPES[content_type]
   return [nil, "Only JPG, PNG, WebP, and PDF files are allowed"] if extension.nil?
@@ -194,11 +195,16 @@ def save_evidence_file(body)
 
   bytes = Base64.strict_decode64(encoded)
   return [nil, "Files must be 5 MB or smaller"] if bytes.bytesize > MAX_EVIDENCE_BYTES
+  fingerprint = Digest::SHA256.hexdigest(bytes)
+  if existing_evidence.any? { |e| e["sha256"] == fingerprint }
+    return [nil, "This exact proof file was already uploaded"]
+  end
 
   key = "#{SecureRandom.uuid}#{extension}"
   File.binwrite(File.join(UPLOAD_DIR, key), bytes)
   [{ "storageKey" => key, "fileUrl" => "/uploads/evidence/#{key}",
-     "contentType" => content_type, "sizeBytes" => bytes.bytesize }, nil]
+     "contentType" => content_type, "sizeBytes" => bytes.bytesize,
+     "sha256" => fingerprint }, nil]
 rescue ArgumentError
   [nil, "The uploaded file could not be read"]
 end
@@ -431,8 +437,10 @@ server.mount_proc("/") do |req, res|
       c = find_commitment(db, parts[1])
       if c.nil?
         json(res, 404, { error: "not-found" })
+      elsif c["status"] != "active"
+        json(res, 409, { error: "evidence can only be added while a commitment is active", status: c["status"] })
       else
-        saved, error = save_evidence_file(body)
+        saved, error = save_evidence_file(body, c["evidence"] || [])
         if error
           json(res, 422, { error: error })
         else
