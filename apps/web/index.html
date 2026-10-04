@@ -47,7 +47,7 @@
 <div id="w1"><input id="fGoal" placeholder="e.g. Finish certification"><div class="row"><button class="btn btn-p" data-w="2">Continue →</button></div></div>
 <div id="w2" style="display:none"><input id="fCrit" placeholder="What does finished look like?"><p class="meta">Add the small milestones that will help you get there.</p><div class="row"><input id="fMilestone" placeholder="e.g. Read chapter 1" style="flex:1;min-width:180px"><button class="btn btn-s" type="button" id="addMilestone">Add milestone</button></div><div id="milestoneDrafts" class="meta" style="margin-top:10px"></div><div class="row"><button class="btn btn-s" data-w="1">← Back</button><button class="btn btn-p" data-w="3">Continue →</button></div></div>
 <div id="w3" style="display:none"><input id="fDate" type="date"><input id="fStake" type="number" min="0" placeholder="Stake amount, minor units (0 = no money)"><div class="row"><button class="btn btn-s" data-w="2">← Back</button><button class="btn btn-p" data-w="4">Review →</button></div></div>
-<div id="w4" style="display:none"><p class="sub" id="review"></p><div class="row"><button class="btn btn-s" data-w="3">← Back</button><button class="btn btn-p" id="create">Accept + Create (draft)</button></div></div>
+<div id="w4" style="display:none"><p class="sub" id="review"></p><div class="card" style="padding:16px"><div class="eyebrow">WHO SHOULD CONFIRM THIS GOAL?</div><p class="meta">A goal with money attached needs someone independent to confirm the result.</p><label style="display:flex;gap:8px;padding:6px 0"><input type="radio" name="reviewMode" value="self" checked style="width:auto"> I will reflect on my own progress <span class="meta">(for goals without money)</span></label><label style="display:flex;gap:8px;padding:6px 0"><input type="radio" name="reviewMode" value="partner" style="width:auto"> An accountability partner</label><label style="display:flex;gap:8px;padding:6px 0"><input type="radio" name="reviewMode" value="platform" style="width:auto"> Productjvity review</label><div id="partnerChoice" style="display:none;margin-top:10px"><select id="fPartner"><option value="">Choose a partner</option></select><p class="meta">Or invite someone new. They will need to sign in with this email and accept before a money-backed goal can start.</p><div class="row"><input id="fPartnerName" placeholder="Their name" style="flex:1;min-width:130px"><input id="fPartnerEmail" type="email" placeholder="Their email address" style="flex:1;min-width:180px"><button type="button" class="btn btn-s" id="invitePartner">Add partner</button></div><div class="meta" id="partnerHint"></div></div></div><div class="row"><button class="btn btn-s" data-w="3">← Back</button><button class="btn btn-p" id="create">Create my goal</button></div></div>
 </div>
 <div class="card" id="afterCreate" style="display:none"></div>
 </section>
@@ -77,12 +77,16 @@
 <div class="eyebrow">MY PROGRESS</div><h1>Every step counts.</h1><p class="sub">Look back at what you have made progress on.</p>
 <div class="card"><label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="consentBox" style="width:auto"> Let others see my progress</label></div>
 <div class="card" id="histBox"></div>
+<div class="card"><div class="eyebrow">YOUR AWARDS</div><p class="sub">Small moments worth celebrating.</p><div id="awardList" class="meta">Loading your awards…</div></div>
 </section>
 <section class="page" id="p-account">
 <div class="eyebrow">ACCOUNT</div><h1>Sign in</h1><p class="sub" id="accountState">Create an account to keep your commitments private.</p>
 <div class="card"><div class="eyebrow">Create account</div><div style="display:grid;gap:10px;margin-top:10px"><input id="signUpName" placeholder="Your name"><input id="signUpEmail" type="email" placeholder="Email address"><div class="row" style="margin:0"><input id="signUpPassword" type="password" placeholder="Password (at least 10 characters)" style="flex:1;min-width:180px"><button type="button" class="btn btn-s" id="showSignUpPassword">Show</button></div><button type="button" class="btn btn-p" id="signUp">Create account</button></div></div>
 <div class="card"><div class="eyebrow">Already have an account?</div><div style="display:grid;gap:10px;margin-top:10px"><input id="loginEmail" type="email" placeholder="Email address"><div class="row" style="margin:0"><input id="loginPassword" type="password" placeholder="Password" style="flex:1;min-width:180px"><button type="button" class="btn btn-s" id="showLoginPassword">Show</button></div><button type="button" class="btn btn-s" id="login">Sign in</button><button type="button" class="btn btn-s" id="logout" style="display:none">Sign out</button></div></div>
+<div class="card"><div class="eyebrow">ACCOUNTABILITY PARTNERS</div><p class="sub">People you trust to give an honest answer when you submit a goal.</p><div class="row"><input id="accountPartnerName" placeholder="Their name" style="flex:1;min-width:130px"><input id="accountPartnerEmail" type="email" placeholder="Their email address" style="flex:1;min-width:180px"><button type="button" class="btn btn-s" id="accountInvite">Add partner</button></div><div id="accountPartnerList" class="meta" style="margin-top:10px">Sign in to manage your partners.</div></div>
+<div class="card"><div class="eyebrow">GOALS WAITING FOR YOUR REVIEW</div><p class="sub">If a friend invited you, their submitted proof will appear here.</p><div id="reviewInviteList" class="meta">Sign in to see invitations.</div><div id="reviewQueueList" class="meta" style="margin-top:10px"></div></div>
 </section>
+<section class="page" id="p-review"><div class="eyebrow">ACCOUNTABILITY REVIEW</div><h1 id="rTitle">Review a goal</h1><p class="sub" id="rMeta"></p><div class="card" id="rBody"></div></section>
 </main></div>
 <script>
 (function(){
@@ -98,6 +102,9 @@ function err(m){
   else if(raw.indexOf("upload")>-1||raw.indexOf("file")>-1) friendly="We could not add that proof. Please check the file and try again.";
   else if(raw.indexOf("network")>-1||raw.indexOf("reach")>-1) friendly="We cannot connect right now. Please check your connection and try again.";
   else if(raw.indexOf("deadline")>-1) friendly="Please choose a finish date for your goal.";
+  else if(raw.indexOf("independent reviewer")>-1) friendly="Choose an independent reviewer before starting a goal with money attached.";
+  else if(raw.indexOf("partner")>-1) friendly="Your accountability partner needs to accept the invitation first.";
+  else if(raw.indexOf("reviewer")>-1) friendly="This goal is waiting for its independent review.";
   else if(raw.indexOf("objective")>-1||raw.indexOf("goal")>-1) friendly="Tell us what you would like to work on first.";
   errBox.style.display="block"; errBox.textContent=friendly;
 }
@@ -116,7 +123,7 @@ function call(method, path, body){
 }
 function go(p){
   var ps=document.querySelectorAll(".page"); for(var i=0;i<ps.length;i++) ps[i].classList.remove("on");
-  var map={welcome:"p-welcome",dash:"p-dash",new:"p-new",discover:"p-discover",detail:"p-detail",orgs:"p-orgs",prog:"p-prog",notes:"p-notes",profile:"p-profile",account:"p-account"};
+  var map={welcome:"p-welcome",dash:"p-dash",new:"p-new",discover:"p-discover",detail:"p-detail",orgs:"p-orgs",prog:"p-prog",notes:"p-notes",profile:"p-profile",account:"p-account",review:"p-review"};
   $(map[p]||"p-dash").classList.add("on");
   var bs=document.querySelectorAll("#nav button"); for(var j=0;j<bs.length;j++) bs[j].classList.toggle("on",bs[j].getAttribute("data-p")===p);
   if(p==="dash") load();
@@ -125,7 +132,7 @@ function go(p){
   if(p==="profile") loadProfile();
   if(p==="account") loadAccount();
 }
-var navs=document.querySelectorAll("#nav button");
+var navs=document.querySelectorAll("button[data-p]");
 for(var n=0;n<navs.length;n++)(function(b){b.addEventListener("click",function(){go(b.getAttribute("data-p"));});})(navs[n]);
 $("dashNewGoal").addEventListener("click",function(){ go("new"); });
 $("dashExplore").addEventListener("click",function(){ go("discover"); });
@@ -134,10 +141,36 @@ var welcomeButtons=document.querySelectorAll("[data-welcome]");
 for(var q=0;q<welcomeButtons.length;q++)(function(b){b.addEventListener("click",function(){ var choice=b.getAttribute("data-welcome"); go(choice==="individual"?"new":choice==="group"?"discover":"account"); });})(welcomeButtons[q]);
 function loadAccount(){
   call("GET","/me").then(function(r){
-    if(r.status===200){ currentUserId=r.body.user.id; $("accountState").textContent="Signed in as "+r.body.user.name+" ("+r.body.user.email+")."; $("logout").style.display="inline-block"; }
+    if(r.status===200){ currentUserId=r.body.user.id; $("accountState").textContent="Signed in as "+r.body.user.name+" ("+r.body.user.email+")."; $("logout").style.display="inline-block"; loadAccountability(); }
     else { $("accountState").textContent="Create an account to keep your commitments private."; $("logout").style.display="none"; }
   });
 }
+function addPartner(name,email,done){
+  call("POST","/accountability-partners",{name:name,email:email}).then(function(r){
+    if(r.status!==201){ err(r.body.error||"We could not add that partner."); return; }
+    if(done) done(r.body); loadAccountability(); loadGoalPartners();
+  });
+}
+function loadAccountability(){
+  if(!authToken) return;
+  call("GET","/accountability-partners").then(function(r){
+    var L=$("accountPartnerList"); L.innerHTML="";
+    if(r.status!==200){ L.textContent="Your partners will appear here."; return; }
+    if(!r.body.length){ L.textContent="No partners yet. Add someone you trust above."; return; }
+    r.body.forEach(function(p){ var d=document.createElement("div"); d.textContent=(p.name||p.email)+" · "+(p.status==="accepted"?"ready to review":"invitation waiting"); L.appendChild(d); });
+  });
+  call("GET","/review-invitations").then(function(r){
+    var L=$("reviewInviteList"); L.innerHTML="";
+    if(r.status!==200||!r.body.length){ L.textContent="No new invitations."; return; }
+    r.body.forEach(function(inv){ var d=document.createElement("div"); d.style.padding="5px 0"; var text=document.createElement("span"); text.textContent=inv.ownerName+" invited you to review their goals. "; d.appendChild(text); if(inv.status==="invited"){var b=document.createElement("button"); b.type="button"; b.className="btn btn-s"; b.style.padding="5px 9px"; b.textContent="Accept"; b.onclick=function(){call("POST","/accountability-partners/"+inv.id+"/accept",{}).then(function(x){if(x.status===200)loadAccountability();else err(x.body.error);});}; d.appendChild(b);}else d.appendChild(document.createTextNode("Ready to review.")); L.appendChild(d); });
+  });
+  call("GET","/review-queue").then(function(r){
+    var L=$("reviewQueueList"); L.innerHTML="";
+    if(r.status!==200||!r.body.length){ L.textContent="Nothing is waiting for your review."; return; }
+    r.body.forEach(function(item){ var d=document.createElement("div"); d.style.padding="5px 0"; var text=document.createElement("span"); text.textContent=item.ownerName+": "+item.objective+" "; var b=document.createElement("button"); b.type="button"; b.className="btn btn-s"; b.style.padding="5px 9px"; b.textContent="Review proof"; b.onclick=function(){openReview(item.id);}; d.appendChild(text);d.appendChild(b);L.appendChild(d); });
+  });
+}
+$("accountInvite").addEventListener("click",function(){ var name=$("accountPartnerName").value.trim(),email=$("accountPartnerEmail").value.trim(); if(!email){err("Enter your partner's email address first.");return;} addPartner(name,email,function(){ $("accountPartnerName").value=""; $("accountPartnerEmail").value=""; }); });
 function saveSession(r){
   authToken=r.body.token;
   localStorage.setItem("productjvity_auth_token",authToken);
@@ -186,7 +219,7 @@ function openDetail(id){
     var B=$("dBody"); B.innerHTML="";
     function btn(label,fn,primary){ var b=document.createElement("button"); b.type="button"; b.className="btn "+(primary?"btn-p":"btn-s"); b.textContent=label; b.onclick=fn; return b; }
     var row=document.createElement("div"); row.className="row";
-    if(c.status==="draft") row.appendChild(btn("Start this goal",function(){ call("POST","/commitments/"+id+"/activate").then(function(){openDetail(id);load();}); },true));
+    if(c.status==="draft") row.appendChild(btn("Start this goal",function(){ call("POST","/commitments/"+id+"/activate").then(function(r){if(r.status===200){openDetail(id);load();}else err(r.body.error||"This goal cannot start yet.");}); },true));
     if(c.status==="active") row.appendChild(btn("Ask for a review",function(){ call("POST","/commitments/"+id+"/submit-for-verification").then(function(){openDetail(id);load();}); },true));
     if(c.status==="successful"||c.status==="unsuccessful") row.appendChild(btn("See my result",function(){ call("POST","/commitments/"+id+"/settle").then(function(){openDetail(id);load();}); },true));
     if(c.status==="settled"){
@@ -199,8 +232,10 @@ function openDetail(id){
       });
     }
     if(c.status==="pending_verification"){
-      row.appendChild(btn("Yes, I finished",function(){ call("POST","/commitments/"+id+"/verify",{method:"self_attest",verdict:"successful"}).then(function(){openDetail(id);load();}); },true));
-      row.appendChild(btn("I did not finish this time",function(){ call("POST","/commitments/"+id+"/verify",{method:"self_attest",verdict:"unsuccessful"}).then(function(){openDetail(id);load();}); }));
+      if(c.reviewMode==="self"){
+        row.appendChild(btn("Yes, I finished",function(){ call("POST","/commitments/"+id+"/verify",{method:"self_attest",verdict:"successful"}).then(function(){openDetail(id);load();}); },true));
+        row.appendChild(btn("I did not finish this time",function(){ call("POST","/commitments/"+id+"/verify",{method:"self_attest",verdict:"unsuccessful"}).then(function(){openDetail(id);load();}); }));
+      } else { var waiting=document.createElement("p"); waiting.className="meta"; waiting.textContent="Your proof is waiting for an independent review. You will be notified when a decision is made."; B.appendChild(waiting); }
     }
     B.appendChild(row);
     var mh=document.createElement("h3"); mh.textContent="Milestones"; B.appendChild(mh);
@@ -270,6 +305,18 @@ function openDetail(id){
     go("detail");
   });
 }
+function openReview(id){
+  call("GET","/reviews/"+id).then(function(r){
+    if(r.status!==200){ err(r.body.error||"This review is not available."); return; }
+    var c=r.body; $("rTitle").textContent=c.objective; $("rMeta").textContent="Submitted by a friend · due "+(c.deadline||"—");
+    var B=$("rBody"); B.innerHTML="";
+    var intro=document.createElement("p"); intro.className="sub"; intro.textContent="Look at their proof, then give your honest answer. Your decision cannot be changed here."; B.appendChild(intro);
+    var h=document.createElement("h3"); h.textContent="Their proof"; B.appendChild(h);
+    if(!c.evidence.length){ var none=document.createElement("p"); none.className="meta"; none.textContent="No file was attached. Ask your friend for more information before deciding."; B.appendChild(none); }
+    c.evidence.forEach(function(e){ var a=document.createElement("a"); a.href=e.fileUrl; a.textContent="Open proof"+(e.note?" — "+e.note:""); a.style.display="block"; a.style.margin="8px 0"; a.onclick=function(event){ event.preventDefault(); var preview=window.open("about:blank","_blank"); fetch(e.fileUrl,{headers:{Authorization:"Bearer "+authToken}}).then(function(response){if(!response.ok)throw new Error("Proof could not be opened");return response.blob();}).then(function(blob){if(preview)preview.location=URL.createObjectURL(blob);}).catch(function(error){if(preview)preview.close();err(error.message);}); }; B.appendChild(a); });
+    var row=document.createElement("div"); row.className="row"; function decide(verdict,label,primary){ var b=document.createElement("button"); b.type="button"; b.className="btn "+(primary?"btn-p":"btn-s"); b.textContent=label; b.onclick=function(){ b.disabled=true; call("POST","/reviews/"+id+"/decision",{verdict:verdict}).then(function(x){ if(x.status===200){ go("account"); loadAccountability(); } else {b.disabled=false;err(x.body.error||"Your decision could not be saved.");} });}; return b; } row.appendChild(decide("successful","Yes, they completed it",true)); row.appendChild(decide("unsuccessful","No, not yet",false)); B.appendChild(row); go("review");
+  });
+}
 // wizard
 var ws=document.querySelectorAll("[data-w]");
 for(var w=0;w<ws.length;w++)(function(b){b.addEventListener("click",function(){ wiz(b.getAttribute("data-w")); });})(ws[w]);
@@ -279,16 +326,27 @@ function wiz(s){
   ["w1","w2","w3","w4"].forEach(function(id,x){ $(id).style.display=(x+1===+s)?"block":"none"; $("s"+(x+1)).classList.toggle("on",x+1<=+s); });
   var titles={1:"What do you want to accomplish?",2:"What does success look like?",3:"Deadline + stake",4:"Review + accept rules"};
   $("wTitle").textContent=titles[s];
-  if(s==="4") $("review").textContent="Goal: "+$("fGoal").value+" · Success: "+($("fCrit").value||"(default)")+" · Deadline: "+$("fDate").value+" · Stake: "+($("fStake").value||0)+" (simulated, no money in Stage 2)";
+  if(s==="4"){ $("review").textContent="Goal: "+$("fGoal").value+" · Success: "+($("fCrit").value||"(default)")+" · Deadline: "+$("fDate").value+" · Stake: "+($("fStake").value||0)+" (simulated, no money in Stage 2)"; loadGoalPartners(); refreshPartnerChoice(); }
 }
+function chosenReviewMode(){ return document.querySelector("input[name='reviewMode']:checked").value; }
+function refreshPartnerChoice(){ $("partnerChoice").style.display=chosenReviewMode()==="partner"?"block":"none"; }
+function loadGoalPartners(){
+  if(!authToken)return;
+  call("GET","/accountability-partners").then(function(r){ if(r.status!==200)return; var S=$("fPartner"), selected=S.value; S.innerHTML="<option value=''>Choose a partner</option>"; r.body.forEach(function(p){var o=document.createElement("option");o.value=p.id;o.textContent=(p.name||p.email)+" · "+(p.status==="accepted"?"ready":"invitation waiting");S.appendChild(o);}); S.value=selected; });
+}
+var reviewModes=document.querySelectorAll("input[name='reviewMode']"); for(var rm=0;rm<reviewModes.length;rm++)reviewModes[rm].addEventListener("change",refreshPartnerChoice);
+$("invitePartner").addEventListener("click",function(){ var name=$("fPartnerName").value.trim(),email=$("fPartnerEmail").value.trim(); if(!email){err("Enter your partner's email address first.");return;} addPartner(name,email,function(p){ $("fPartnerName").value="";$("fPartnerEmail").value="";$("partnerHint").textContent="Invitation saved. Ask "+(p.name||p.email)+" to sign in and accept it."; setTimeout(function(){$("fPartner").value=p.id;},0); }); });
 $("create").addEventListener("click",function(){
-  call("POST","/commitments",{objective:$("fGoal").value,successCriteria:$("fCrit").value,deadline:$("fDate").value,stakeAmount:+($("fStake").value||0),milestones:draftedMilestones}).then(function(r){
+  var mode=chosenReviewMode(), stake=+($("fStake").value||0), partnerId=$("fPartner").value;
+  if(stake>0&&mode==="self"){err("Choose an independent reviewer for a goal with money attached.");return;}
+  if(mode==="partner"&&!partnerId){err("Choose or add an accountability partner first.");return;}
+  call("POST","/commitments",{objective:$("fGoal").value,successCriteria:$("fCrit").value,deadline:$("fDate").value,stakeAmount:stake,milestones:draftedMilestones,reviewMode:mode,reviewerPartnerId:partnerId}).then(function(r){
     if(r.status!==201){ err("Create failed ("+r.status+"): "+JSON.stringify(r.body)); return; }
     var box=$("afterCreate"); box.style.display="block";
     box.innerHTML="";
-    var p=document.createElement("p"); p.className="sub"; p.textContent="Your goal is ready. Start when you feel ready.";
+    var p=document.createElement("p"); p.className="sub"; p.textContent=mode==="partner"&&stake>0?"Your goal is ready. It can start once your partner accepts the invitation.":"Your goal is ready. Start when you feel ready.";
     var b=document.createElement("button"); b.type="button"; b.className="btn btn-p"; b.textContent="Start this goal";
-    b.onclick=function(){ call("POST","/commitments/"+r.body.id+"/activate").then(function(){ openDetail(r.body.id); load(); }); };
+    b.onclick=function(){ call("POST","/commitments/"+r.body.id+"/activate").then(function(x){ if(x.status===200){ openDetail(r.body.id); load(); } else err(x.body.error||"This goal cannot start yet."); }); };
     box.appendChild(p); box.appendChild(b);
     load();
   }).catch(function(e){ err("Create failed: "+e); });
@@ -380,6 +438,7 @@ $("consentBox").addEventListener("change",function(){
   call("POST","/users/"+currentUserId+"/consent",{consentProfilePublic:$("consentBox").checked}).then(function(){ loadProfile(); });
 });
 function loadProfile(){
+  call("GET","/awards").then(function(r){ var L=$("awardList"); L.innerHTML=""; if(r.status!==200||!r.body.length){L.textContent="Complete a milestone to earn your first badge.";return;} r.body.forEach(function(a){var d=document.createElement("div");d.style.padding="5px 0";d.textContent="✦ "+a.title+(a.description?" — "+a.description:"");L.appendChild(d);}); });
   call("GET","/me").then(function(me){ if(me.status!==200){ $("histBox").textContent="Sign in to view your history."; return; } currentUserId=me.body.user.id; return call("GET","/users/"+currentUserId+"/history").then(function(r){
     var B=$("histBox"); B.innerHTML="";
     if(r.status!==200){ B.textContent="history unavailable"; return; }

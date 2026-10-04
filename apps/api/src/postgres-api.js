@@ -89,7 +89,7 @@ async function commitmentView(row) {
   return {
     id: row.id, userId: row.user_id, programmeId: row.programme_id, rulesVersion: row.rules_version,
     rules: row.rules, objective: row.objective, deadline: row.deadline, stakeAmount: Number(row.stake_amount),
-    currency: row.currency.trim(), status: row.status, outcome: row.outcome, createdAt: row.created_at,
+    currency: row.currency.trim(), status: row.status, outcome: row.outcome, reviewMode: row.review_mode || "self", reviewerPartnerId: row.reviewer_partner_id || null, createdAt: row.created_at,
     milestones: milestones.rows.map((m) => ({ id: m.id, title: m.title, dueAt: m.due_at, required: m.required, done: m.done })),
     evidence: evidence.rows.map((e) => ({ id: e.id, milestoneId: e.milestone_id, storageKey: e.storage_key, fileUrl: e.file_url, contentType: e.content_type, sizeBytes: Number(e.size_bytes), sha256: e.sha256, note: e.note, submittedAt: e.submitted_at })),
     verifications: verifications.rows.map((v) => ({ id: v.id, method: v.method, verdict: v.verdict, reason: v.reason, decidedBy: v.decided_by_id, decidedAt: v.decided_at })),
@@ -173,7 +173,7 @@ export async function serveEvidence(req, res, url) {
   if (!user) { res.writeHead(401, { "content-type": "application/json" }); res.end(JSON.stringify({ error: "sign-in required" })); return true; }
   const key = match[1];
   const allowed = await pool.query(`select e.content_type from evidence e join commitments c on c.id=e.commitment_id
-    where e.storage_key=$1 and c.user_id=$2`, [key, user.id]);
+    where e.storage_key=$1 and (c.user_id=$2 or exists (select 1 from accountability_partners ap where ap.id=c.reviewer_partner_id and lower(ap.email)=lower($3) and ap.status='accepted'))`, [key, user.id, user.email]);
   if (!allowed.rows[0]) { res.writeHead(404, { "content-type": "application/json" }); res.end(JSON.stringify({ error: "evidence-not-found" })); return true; }
   try {
     const bytes = await readFile(resolve(uploadDirectory, key));
@@ -258,9 +258,51 @@ export async function handlePostgresApi(req, res, url, send) {
   if (method === "POST" && path.length === 1 && path[0] === "accountability-partners") {
     const body = await readJson(req); const email = String(body.email || "").trim().toLowerCase();
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return send(422, { error: "a valid email is required" });
+    if (email === user.email.toLowerCase()) return send(422, { error: "choose someone else to review your goal" });
     const created = await pool.query(`insert into accountability_partners (id,owner_id,email,name,status) values ($1,$2,$3,$4,'invited')
       on conflict (owner_id,email) do update set name=excluded.name returning *`, [randomUUID(), user.id, email, String(body.name || "").trim() || null]);
     return send(201, { id: created.rows[0].id, email: created.rows[0].email, name: created.rows[0].name, status: created.rows[0].status });
+  }
+  if (method === "GET" && path.length === 1 && path[0] === "review-invitations") {
+    const rows = await pool.query(`select ap.id,ap.name,ap.email,ap.status,u.name as owner_name,u.email as owner_email
+      from accountability_partners ap join users u on u.id=ap.owner_id
+      where lower(ap.email)=lower($1) order by ap.created_at desc`, [user.email]);
+    return send(200, rows.rows.map((row) => ({ id: row.id, name: row.name, email: row.email, status: row.status, ownerName: row.owner_name, ownerEmail: row.owner_email })));
+  }
+  if (method === "POST" && path[0] === "accountability-partners" && path[1] && path[2] === "accept") {
+    const updated = await pool.query(`update accountability_partners set status='accepted'
+      where id=$1 and lower(email)=lower($2) and status='invited' returning id,name,email,status`, [path[1], user.email]);
+    if (!updated.rows[0]) return send(404, { error: "this invitation is no longer available" });
+    return send(200, { ...updated.rows[0], message: "You can now review this person's submitted proof." });
+  }
+  if (method === "GET" && path.length === 1 && path[0] === "review-queue") {
+    const rows = await pool.query(`select c.id,c.objective,c.deadline,c.stake_amount,c.currency,u.name as owner_name
+      from commitments c join accountability_partners ap on ap.id=c.reviewer_partner_id join users u on u.id=c.user_id
+      where lower(ap.email)=lower($1) and ap.status='accepted' and c.status='pending_verification' order by c.updated_at asc`, [user.email]);
+    return send(200, rows.rows.map((row) => ({ id: row.id, objective: row.objective, deadline: row.deadline, stakeAmount: Number(row.stake_amount), currency: row.currency.trim(), ownerName: row.owner_name })));
+  }
+  if (method === "POST" && path[0] === "reviews" && path[1] && path[2] === "decision") {
+    const body = await readJson(req);
+    if (!['successful', 'unsuccessful'].includes(body.verdict)) return send(422, { error: "choose whether the goal was completed" });
+    const commitment = (await pool.query(`select c.* from commitments c join accountability_partners ap on ap.id=c.reviewer_partner_id
+      where c.id=$1 and lower(ap.email)=lower($2) and ap.status='accepted'`, [path[1], user.email])).rows[0];
+    if (!commitment) return send(403, { error: "you are not the reviewer for this goal" });
+    if (commitment.status !== 'pending_verification') return send(409, { error: "this goal is not ready for review" });
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query(`insert into verification_decisions (id,commitment_id,method,verdict,reason,decided_by_id)
+        values ($1,$2,'manual_review',$3,$4,$5)`, [randomUUID(), commitment.id, body.verdict, String(body.reason || "").trim() || null, user.id]);
+      const updated = await client.query("update commitments set status=$1,outcome=$1,updated_at=now() where id=$2 returning *", [body.verdict, commitment.id]);
+      await client.query("COMMIT");
+      return send(200, await commitmentView(updated.rows[0]));
+    } catch (error) { await client.query("ROLLBACK"); throw error; } finally { client.release(); }
+  }
+  if (method === "GET" && path[0] === "reviews" && path[1] && path.length === 2) {
+    const commitment = (await pool.query(`select c.* from commitments c join accountability_partners ap on ap.id=c.reviewer_partner_id
+      where c.id=$1 and lower(ap.email)=lower($2) and ap.status='accepted'`, [path[1], user.email])).rows[0];
+    if (!commitment) return send(403, { error: "you are not the reviewer for this goal" });
+    return send(200, await commitmentView(commitment));
   }
   if (method === "GET" && path.length === 1 && path[0] === "awards") {
     const rows = await pool.query("select id,kind,title,description,awarded_at from awards where user_id=$1 order by awarded_at desc", [user.id]);
@@ -341,6 +383,10 @@ export async function handlePostgresApi(req, res, url, send) {
     const body = await readJson(req);
     if (!String(body.objective || "").trim() || !String(body.deadline || "").trim()) return send(422, { error: "objective and deadline are required" });
     if (Number(body.stakeAmount || 0) > 0 && !["partner", "institution", "platform"].includes(body.reviewMode)) return send(422, { error: "an independent reviewer is required for a goal with a stake" });
+    if (body.reviewMode === "partner") {
+      const partner = (await pool.query("select id from accountability_partners where id=$1 and owner_id=$2", [body.reviewerPartnerId, user.id])).rows[0];
+      if (!partner) return send(422, { error: "choose an accountability partner first" });
+    }
     const id = randomUUID();
     const rules = defaultRules(body);
     const result = await pool.query(`insert into commitments (id,user_id,rules,objective,deadline,stake_amount,currency,status,review_mode,reviewer_partner_id)
@@ -360,6 +406,10 @@ export async function handlePostgresApi(req, res, url, send) {
 
   if (method === "POST" && path[2] === "activate") {
     if (commitment.status !== "draft") return send(409, { error: "only draft can be activated", status: commitment.status });
+    if (Number(commitment.stake_amount) > 0 && commitment.review_mode === "partner") {
+      const partner = (await pool.query("select status from accountability_partners where id=$1 and owner_id=$2", [commitment.reviewer_partner_id, user.id])).rows[0];
+      if (!partner || partner.status !== "accepted") return send(409, { error: "your accountability partner needs to accept the invitation before this goal can start" });
+    }
     const updated = await pool.query("update commitments set status='active', updated_at=now() where id=$1 returning *", [commitment.id]);
     return send(200, await commitmentView(updated.rows[0]));
   }
@@ -400,6 +450,7 @@ export async function handlePostgresApi(req, res, url, send) {
   if (method === "POST" && path[2] === "verify") {
     const body = await readJson(req);
     if (commitment.status !== "pending_verification") return send(409, { error: "only pending_verification can be verified", status: commitment.status });
+    if (commitment.review_mode !== "self") return send(403, { error: "this goal needs a decision from its independent reviewer" });
     if (!["self_attest", "manual_review"].includes(body.method)) return send(422, { error: "method must be self_attest or manual_review" });
     if (!["successful", "unsuccessful"].includes(body.verdict)) return send(422, { error: "verdict must be successful or unsuccessful" });
     const client = await pool.connect();
