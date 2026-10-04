@@ -207,6 +207,9 @@ function openDetail(id){
       else { p.textContent="• "+e.fileName; }
       if(e.note){ p.appendChild(document.createTextNode(" — "+e.note)); }
       B.appendChild(p);
+      var review=document.createElement("button"); review.type="button"; review.className="btn btn-s"; review.style.cssText="padding:6px 10px;font-size:12px;margin:4px 0 8px"; review.textContent="Request assisted review";
+      review.onclick=(function(evidenceId,button){ return function(){ button.disabled=true; button.textContent="Requesting…"; call("POST","/commitments/"+id+"/evidence/"+evidenceId+"/ai-review",{}).then(function(r){ if(r.status===202){ button.textContent="Human review requested"; } else { button.disabled=false; button.textContent="Request assisted review"; err("Review request failed: "+(r.body.error||"please try again")); } }).catch(function(){ button.disabled=false; button.textContent="Request assisted review"; err("Review request failed. Please try again."); }); }; })(e.id,review);
+      B.appendChild(review);
     });
     if(c.status!=="active"){
       var closed=document.createElement("p"); closed.className="meta"; closed.textContent="Proof uploads are closed once this commitment is submitted for verification."; B.appendChild(closed);
