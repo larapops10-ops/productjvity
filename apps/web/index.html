@@ -161,21 +161,21 @@ function openDetail(id){
     var B=$("dBody"); B.innerHTML="";
     function btn(label,fn,primary){ var b=document.createElement("button"); b.type="button"; b.className="btn "+(primary?"btn-p":"btn-s"); b.textContent=label; b.onclick=fn; return b; }
     var row=document.createElement("div"); row.className="row";
-    if(c.status==="draft") row.appendChild(btn("Activate (pin rules)",function(){ call("POST","/commitments/"+id+"/activate").then(function(){openDetail(id);load();}); },true));
-    if(c.status==="active") row.appendChild(btn("Submit for verification",function(){ call("POST","/commitments/"+id+"/submit-for-verification").then(function(){openDetail(id);load();}); },true));
-    if(c.status==="successful"||c.status==="unsuccessful") row.appendChild(btn("Settle (simulated money)",function(){ call("POST","/commitments/"+id+"/settle").then(function(){openDetail(id);load();}); },true));
+    if(c.status==="draft") row.appendChild(btn("Start this goal",function(){ call("POST","/commitments/"+id+"/activate").then(function(){openDetail(id);load();}); },true));
+    if(c.status==="active") row.appendChild(btn("Ask for a review",function(){ call("POST","/commitments/"+id+"/submit-for-verification").then(function(){openDetail(id);load();}); },true));
+    if(c.status==="successful"||c.status==="unsuccessful") row.appendChild(btn("See my result",function(){ call("POST","/commitments/"+id+"/settle").then(function(){openDetail(id);load();}); },true));
     if(c.status==="settled"){
       call("GET","/commitments/"+id+"/outcome").then(function(r){
         if(r.status!==200) return;
         var o=r.body, d=document.createElement("div");
         d.style.cssText="background:var(--acS);border-radius:12px;padding:14px;margin-top:12px;font-size:13.5px";
-        d.innerHTML="<b>Outcome receipt</b> · rules v"+o.rulesVersion+"<br>Committed "+o.committed+" · At-risk "+o.atRisk+" · Returned "+o.returned+" · Forfeited "+o.forfeited+"<br>Split → success pool "+o.allocation.toSuccessPool+" · platform "+o.allocation.toPlatform+" · institution "+o.allocation.toInstitution;
+        d.innerHTML="<b>Your result</b><br>Returned "+o.returned+" · Not returned "+o.forfeited;
         B.appendChild(d);
       });
     }
     if(c.status==="pending_verification"){
-      row.appendChild(btn("Verify: successful (self-attest)",function(){ call("POST","/commitments/"+id+"/verify",{method:"self_attest",verdict:"successful"}).then(function(){openDetail(id);load();}); },true));
-      row.appendChild(btn("Verify: unsuccessful",function(){ call("POST","/commitments/"+id+"/verify",{method:"self_attest",verdict:"unsuccessful"}).then(function(){openDetail(id);load();}); }));
+      row.appendChild(btn("Yes, I finished",function(){ call("POST","/commitments/"+id+"/verify",{method:"self_attest",verdict:"successful"}).then(function(){openDetail(id);load();}); },true));
+      row.appendChild(btn("I did not finish this time",function(){ call("POST","/commitments/"+id+"/verify",{method:"self_attest",verdict:"unsuccessful"}).then(function(){openDetail(id);load();}); }));
     }
     B.appendChild(row);
     var mh=document.createElement("h3"); mh.textContent="Milestones"; B.appendChild(mh);
@@ -191,7 +191,7 @@ function openDetail(id){
     var mb=document.createElement("button"); mb.type="button"; mb.className="btn btn-s"; mb.textContent="Add";
     mb.onclick=function(){ if(!mi.value.trim())return; call("POST","/commitments/"+id+"/milestones",{title:mi.value.trim()}).then(function(){openDetail(id);load();}); };
     mr.appendChild(mi); mr.appendChild(mb); B.appendChild(mr);
-    var eh=document.createElement("h3"); eh.textContent="Evidence"; B.appendChild(eh);
+    var eh=document.createElement("h3"); eh.textContent="Proof of progress"; B.appendChild(eh);
     c.evidence.forEach(function(e){
       var p=document.createElement("div"); p.className="meta";
       if(e.fileUrl){
@@ -240,7 +240,7 @@ function openDetail(id){
     };
     er.appendChild(fi); er.appendChild(ni); er.appendChild(eb); B.appendChild(er);
     }
-    var vh=document.createElement("h3"); vh.textContent="Verification history (immutable)"; B.appendChild(vh);
+    var vh=document.createElement("h3"); vh.textContent="Review activity"; B.appendChild(vh);
     (c.verifications||[]).forEach(function(v){ var p=document.createElement("div"); p.className="meta"; p.textContent=v.method+" → "+v.verdict+" @ "+v.decidedAt; B.appendChild(p); });
     go("detail");
   });
