@@ -53,7 +53,10 @@ async function requestGeminiAssessment(evidence, commitment) {
       response_format: { type: "text", mime_type: "application/json", schema: assessmentSchema() }
     })
   });
-  if (!response.ok) throw new Error(`Gemini request failed (${response.status})`);
+  if (!response.ok) {
+    const details = (await response.text()).replace(/\s+/g, " ").slice(0, 400);
+    throw new Error(`Gemini request failed (${response.status}): ${details}`);
+  }
   const result = JSON.parse(outputText(await response.json()));
   if (!assessmentSchema().properties.recommendation.enum.includes(result.recommendation) || typeof result.confidence !== "number") throw new Error("Gemini returned an invalid assessment");
   return { recommendation: result.recommendation, confidence: Math.max(0, Math.min(1, result.confidence)), rationale: { reasons: result.reasons || [] } };
