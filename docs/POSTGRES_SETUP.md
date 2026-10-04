@@ -14,3 +14,11 @@ Verify the tables:
 ```
 
 The current Ruby prototype still reads its local JSON store. The next migration step is to move those runtime reads and writes to these PostgreSQL tables, preserving the JSON file as a rollback backup until verification is complete.
+
+## Import existing prototype data
+
+After verifying the database connection, run this once. It inserts records without deleting the JSON source file or replacing an existing row with the same ID.
+
+```sh
+/Users/lara/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node apps/api/src/import-json-to-postgres.js
+```
