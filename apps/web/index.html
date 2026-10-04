@@ -42,7 +42,7 @@
 <div class="card">
 <div class="steps"><i class="on" id="s1"></i><i id="s2"></i><i id="s3"></i><i id="s4"></i></div>
 <div id="w1"><input id="fGoal" placeholder="e.g. Finish certification"><div class="row"><button class="btn btn-p" data-w="2">Continue →</button></div></div>
-<div id="w2" style="display:none"><input id="fCrit" placeholder="What does finished look like?"><input id="fSteps" placeholder="Your steps, separated with commas"><p class="meta">Example: Read chapter 1, write notes, share a summary</p><div class="row"><button class="btn btn-s" data-w="1">← Back</button><button class="btn btn-p" data-w="3">Continue →</button></div></div>
+<div id="w2" style="display:none"><input id="fCrit" placeholder="What does finished look like?"><p class="meta">Add the small milestones that will help you get there.</p><div class="row"><input id="fMilestone" placeholder="e.g. Read chapter 1" style="flex:1;min-width:180px"><button class="btn btn-s" type="button" id="addMilestone">Add milestone</button></div><div id="milestoneDrafts" class="meta" style="margin-top:10px"></div><div class="row"><button class="btn btn-s" data-w="1">← Back</button><button class="btn btn-p" data-w="3">Continue →</button></div></div>
 <div id="w3" style="display:none"><input id="fDate" type="date"><input id="fStake" type="number" min="0" placeholder="Stake amount, minor units (0 = no money)"><div class="row"><button class="btn btn-s" data-w="2">← Back</button><button class="btn btn-p" data-w="4">Review →</button></div></div>
 <div id="w4" style="display:none"><p class="sub" id="review"></p><div class="row"><button class="btn btn-s" data-w="3">← Back</button><button class="btn btn-p" id="create">Accept + Create (draft)</button></div></div>
 </div>
@@ -90,6 +90,8 @@ var currentUserId = "";
 var errBox = document.getElementById("err");
 function err(m){ errBox.style.display="block"; errBox.textContent=m; }
 function $(id){ return document.getElementById(id); }
+var draftedMilestones=[];
+function drawMilestones(){ $("milestoneDrafts").innerHTML=draftedMilestones.length?draftedMilestones.map(function(m,i){return "<div>◦ "+m.replace(/[&<>\"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];})+" <button type='button' data-remove-milestone='"+i+"' style='border:0;background:none;color:var(--mut);cursor:pointer'>Remove</button></div>";}).join(""):"No milestones yet — you can add them later too."; }
 function call(method, path, body){
   // Always send a JSON body on POST: Firefox omits Content-Length for
   // bodyless fetch POSTs and WEBrick answers 411 (curl sends 0, hiding this).
@@ -246,6 +248,8 @@ function openDetail(id){
 // wizard
 var ws=document.querySelectorAll("[data-w]");
 for(var w=0;w<ws.length;w++)(function(b){b.addEventListener("click",function(){ wiz(b.getAttribute("data-w")); });})(ws[w]);
+$("addMilestone").addEventListener("click",function(){ var title=$("fMilestone").value.trim(); if(!title)return; draftedMilestones.push(title); $("fMilestone").value=""; drawMilestones(); });
+$("milestoneDrafts").addEventListener("click",function(event){ var i=event.target.getAttribute("data-remove-milestone"); if(i!==null){draftedMilestones.splice(+i,1);drawMilestones();} });
 function wiz(s){
   ["w1","w2","w3","w4"].forEach(function(id,x){ $(id).style.display=(x+1===+s)?"block":"none"; $("s"+(x+1)).classList.toggle("on",x+1<=+s); });
   var titles={1:"What do you want to accomplish?",2:"What does success look like?",3:"Deadline + stake",4:"Review + accept rules"};
@@ -253,7 +257,7 @@ function wiz(s){
   if(s==="4") $("review").textContent="Goal: "+$("fGoal").value+" · Success: "+($("fCrit").value||"(default)")+" · Deadline: "+$("fDate").value+" · Stake: "+($("fStake").value||0)+" (simulated, no money in Stage 2)";
 }
 $("create").addEventListener("click",function(){
-  call("POST","/commitments",{objective:$("fGoal").value,successCriteria:$("fCrit").value,deadline:$("fDate").value,stakeAmount:+($("fStake").value||0),milestones:$("fSteps").value.split(",")}).then(function(r){
+  call("POST","/commitments",{objective:$("fGoal").value,successCriteria:$("fCrit").value,deadline:$("fDate").value,stakeAmount:+($("fStake").value||0),milestones:draftedMilestones}).then(function(r){
     if(r.status!==201){ err("Create failed ("+r.status+"): "+JSON.stringify(r.body)); return; }
     var box=$("afterCreate"); box.style.display="block";
     box.innerHTML="";
