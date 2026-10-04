@@ -27,10 +27,11 @@
 <div class="app">
 <aside class="side"><div class="logo"><span class="mark">◍</span>Productjvity</div>
 <nav class="nav" id="nav">
-<button type="button" data-p="dash" class="on">⌂ Today</button><button type="button" data-p="new">＋ New goal</button><button type="button" data-p="orgs">◌ Groups</button><button type="button" data-p="notes">✉ Updates</button><button type="button" data-p="profile">○ My progress</button><button type="button" data-p="account">◉ Account</button>
+<button type="button" data-p="dash" class="on">⌂ Today</button><button type="button" data-p="new">＋ New goal</button><button type="button" data-p="discover">⌕ Explore</button><button type="button" data-p="notes">✉ Updates</button><button type="button" data-p="profile">○ My progress</button><button type="button" data-p="account">◉ Account</button>
 </nav><div class="ver">make steady progress</div></aside>
 <main class="main">
 <div id="err"></div>
+<section class="page" id="p-welcome"><div class="eyebrow">PRODUCTJVITY</div><h1>Make room for what matters.</h1><p class="sub">Set a meaningful goal. Take one small step at a time. See how far you have come.</p><div class="card"><h3>For me</h3><p class="sub">Build a personal goal, add milestones, and keep moving forward.</p><button class="btn btn-p" type="button" data-welcome="individual">Start my goal</button></div><div class="card"><h3>For a group</h3><p class="sub">Create a shared challenge for your church, school, team, or community.</p><button class="btn btn-s" type="button" data-welcome="group">Explore shared goals</button></div><p class="meta">Already have an account? <button class="btn btn-s" style="padding:5px 9px" type="button" data-welcome="account">Sign in</button></p></section>
 <section class="page on" id="p-dash">
 <div class="eyebrow">TODAY</div><h1>A little progress goes a long way.</h1><p class="sub" id="apiState">Getting your goals ready…</p>
 <div class="card" id="sumCard" style="display:none"><div class="eyebrow">Summary</div><p class="sub" id="sumText"></p></div>
@@ -49,8 +50,8 @@
 <div class="card" id="afterCreate" style="display:none"></div>
 </section>
 <section class="page" id="p-discover">
-<div class="eyebrow">EXPLORE</div><h1>Shared goals</h1><p class="sub">Work towards something meaningful with your group.</p>
-<div class="card"><b>30-day starter challenge</b><p class="sub">Template preview — enrolment opens in Stage 4.</p></div>
+<div class="eyebrow">EXPLORE</div><h1>Shared goals</h1><p class="sub">Find a challenge to work on with people who encourage you.</p>
+<div class="card"><b>Start a group challenge</b><p class="sub">Bring your church, school, team, or friends together around one meaningful goal.</p><button class="btn btn-p" type="button" data-p="orgs">Create a group</button></div>
 </section>
 <section class="page" id="p-detail">
 <div class="eyebrow">COMMITMENT</div><h1 id="dTitle">—</h1><p class="sub" id="dMeta"></p>
@@ -113,7 +114,7 @@ function call(method, path, body){
 }
 function go(p){
   var ps=document.querySelectorAll(".page"); for(var i=0;i<ps.length;i++) ps[i].classList.remove("on");
-  var map={dash:"p-dash",new:"p-new",discover:"p-discover",detail:"p-detail",orgs:"p-orgs",prog:"p-prog",notes:"p-notes",profile:"p-profile",account:"p-account"};
+  var map={welcome:"p-welcome",dash:"p-dash",new:"p-new",discover:"p-discover",detail:"p-detail",orgs:"p-orgs",prog:"p-prog",notes:"p-notes",profile:"p-profile",account:"p-account"};
   $(map[p]||"p-dash").classList.add("on");
   var bs=document.querySelectorAll("#nav button"); for(var j=0;j<bs.length;j++) bs[j].classList.toggle("on",bs[j].getAttribute("data-p")===p);
   if(p==="dash") load();
@@ -124,6 +125,8 @@ function go(p){
 }
 var navs=document.querySelectorAll("#nav button");
 for(var n=0;n<navs.length;n++)(function(b){b.addEventListener("click",function(){go(b.getAttribute("data-p"));});})(navs[n]);
+var welcomeButtons=document.querySelectorAll("[data-welcome]");
+for(var q=0;q<welcomeButtons.length;q++)(function(b){b.addEventListener("click",function(){ var choice=b.getAttribute("data-welcome"); go(choice==="individual"?"new":choice==="group"?"discover":"account"); });})(welcomeButtons[q]);
 function loadAccount(){
   call("GET","/me").then(function(r){
     if(r.status===200){ currentUserId=r.body.user.id; $("accountState").textContent="Signed in as "+r.body.user.name+" ("+r.body.user.email+")."; $("logout").style.display="inline-block"; }
@@ -375,7 +378,7 @@ function loadProfile(){
     $("consentBox").checked=!!me.body.user.consentProfilePublic;
   }); });
 }
-load();
+if(authToken) load(); else go("welcome");
 })();
 </script>
 </body>
