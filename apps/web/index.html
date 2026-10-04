@@ -19,15 +19,15 @@
 .page{display:none}.page.on{display:block}.steps{display:flex;gap:6px;margin:12px 0}.steps i{flex:1;height:4px;border-radius:99px;background:#EDE8E0}.steps i.on{background:var(--ac)}
 .welcome{position:relative;overflow:hidden;min-height:560px;padding:64px 34px;border-radius:28px;background:radial-gradient(circle at 85% 12%,rgba(155,138,196,.30),transparent 28%),radial-gradient(circle at 13% 84%,rgba(164,195,170,.42),transparent 36%),linear-gradient(140deg,#FEFEFB,#F3F6EF);isolation:isolate}.welcome:before{content:"";position:absolute;inset:-20%;z-index:-1;opacity:.58;background:repeating-radial-gradient(ellipse at 72% 34%,transparent 0 42px,rgba(88,115,95,.20) 43px 45px,transparent 46px 78px);transform:rotate(-12deg)}.welcome:after{content:"";position:absolute;width:340px;height:340px;right:-115px;bottom:-150px;border:3px solid rgba(155,138,196,.55);border-radius:50%;box-shadow:0 0 0 34px rgba(155,138,196,.14),0 0 0 70px rgba(88,115,95,.08);z-index:-1}.welcome h1{max-width:560px;font-size:48px;line-height:1.04}.welcome>.sub{max-width:500px;font-size:17px;line-height:1.6}.welcome .card{max-width:480px;background:rgba(255,255,255,.82);backdrop-filter:blur(8px)}
 #err{display:none;background:#FDE8E8;border:1px solid #E5A49C;border-radius:12px;padding:10px 14px;margin-bottom:12px;font-size:13.5px}
-.ver{font-size:11px;color:var(--mut);padding:0 10px}
+.ver{font-size:11px;color:var(--mut);padding:0 10px}.mobile-nav{display:none}
 .pill{font-size:11.5px;font-weight:700;border-radius:99px;padding:3px 10px;background:var(--acS);color:var(--ac)}
-@media(max-width:820px){.side{display:none}}
+@media(max-width:820px){.side{display:none}.main{padding:28px 18px 105px}.welcome{padding:46px 24px;min-height:500px}.welcome h1{font-size:39px}.mobile-nav{display:flex;position:fixed;z-index:20;left:0;right:0;bottom:0;justify-content:space-around;gap:2px;padding:9px 6px max(9px,env(safe-area-inset-bottom));background:rgba(255,255,255,.96);border-top:1px solid var(--line);box-shadow:0 -8px 28px rgba(29,42,33,.08)}.mobile-nav button{flex:1;border:0;border-radius:10px;padding:8px 3px;color:var(--mut);font-size:10px;font-weight:700;background:transparent}.mobile-nav button.on{background:var(--acS);color:var(--ac)}}
 </style>
 </head>
 <body>
 <div class="app">
 <aside class="side"><div class="logo"><span class="mark">◍</span>Productjvity</div>
-<nav class="nav" id="nav">
+<nav class="nav app-nav" id="nav">
 <button type="button" data-p="dash" class="on">⌂ Today</button><button type="button" data-p="new">＋ New goal</button><button type="button" data-p="discover">⌕ Explore</button><button type="button" data-p="notes">✉ Updates</button><button type="button" data-p="profile">○ My progress</button><button type="button" data-p="account">◉ Account</button>
 </nav><div class="ver">make steady progress</div></aside>
 <main class="main">
@@ -87,7 +87,7 @@
 <div class="card"><div class="eyebrow">GOALS WAITING FOR YOUR REVIEW</div><p class="sub">If a friend invited you, their submitted proof will appear here.</p><div id="reviewInviteList" class="meta">Sign in to see invitations.</div><div id="reviewQueueList" class="meta" style="margin-top:10px"></div></div>
 </section>
 <section class="page" id="p-review"><div class="eyebrow">ACCOUNTABILITY REVIEW</div><h1 id="rTitle">Review a goal</h1><p class="sub" id="rMeta"></p><div class="card" id="rBody"></div></section>
-</main></div>
+</main><nav class="mobile-nav app-nav" aria-label="Main navigation"><button type="button" data-p="dash" class="on">Today</button><button type="button" data-p="new">New goal</button><button type="button" data-p="discover">Explore</button><button type="button" data-p="profile">Progress</button><button type="button" data-p="account">Account</button></nav></div>
 <script>
 (function(){
 "use strict";
@@ -125,7 +125,7 @@ function go(p){
   var ps=document.querySelectorAll(".page"); for(var i=0;i<ps.length;i++) ps[i].classList.remove("on");
   var map={welcome:"p-welcome",dash:"p-dash",new:"p-new",discover:"p-discover",detail:"p-detail",orgs:"p-orgs",prog:"p-prog",notes:"p-notes",profile:"p-profile",account:"p-account",review:"p-review"};
   $(map[p]||"p-dash").classList.add("on");
-  var bs=document.querySelectorAll("#nav button"); for(var j=0;j<bs.length;j++) bs[j].classList.toggle("on",bs[j].getAttribute("data-p")===p);
+  var bs=document.querySelectorAll(".app-nav button"); for(var j=0;j<bs.length;j++) bs[j].classList.toggle("on",bs[j].getAttribute("data-p")===p);
   if(p==="dash") load();
   if(p==="orgs") loadOrgs();
   if(p==="notes") loadNotes();
