@@ -1,10 +1,10 @@
 import { createHash, createHmac } from "node:crypto";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { fileURLToPath } from "node:url";
-
-const here = resolve(fileURLToPath(new URL(".", import.meta.url)));
-const localDirectory = resolve(here, "../../../uploads/evidence");
+// `import.meta.url` is not retained when Netlify bundles this module as a
+// serverless function. The project working directory works for local use and
+// avoids making the function fail before it can reach R2.
+const localDirectory = resolve(process.cwd(), "uploads/evidence");
 const r2Configured = () => Boolean(process.env.R2_ACCOUNT_ID && process.env.R2_ACCESS_KEY_ID && process.env.R2_SECRET_ACCESS_KEY && process.env.R2_BUCKET);
 const sha256 = (value) => createHash("sha256").update(value).digest("hex");
 const hmac = (key, value, encoding) => createHmac("sha256", key).update(value).digest(encoding);
