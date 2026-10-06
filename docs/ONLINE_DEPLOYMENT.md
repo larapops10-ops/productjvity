@@ -6,7 +6,7 @@ This keeps the original architecture: hosted PostgreSQL for app data, private Cl
 
 - `netlify/functions/api.mjs` runs the existing API as a Netlify Function.
 - `apps/api/src/evidence-storage.js` uses Cloudflare R2 when the R2 settings exist, while retaining local file storage for development.
-- `netlify.real-app.toml` contains the production routing rules. The existing `netlify.toml` remains the safe interactive-demo configuration until the real services are ready.
+- `netlify.toml` contains the production routing rules. `netlify.demo.toml` preserves the optional visual-only demo configuration.
 
 ## One-time account setup still required
 
@@ -14,7 +14,7 @@ This keeps the original architecture: hosted PostgreSQL for app data, private Cl
 2. Create a private Cloudflare R2 bucket named `productjvity-evidence` and make an R2 API token with read/write access limited to that bucket.
 3. In Netlify, save these environment variables: `DATABASE_URL`, `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, and `R2_ENDPOINT`.
 4. Use the pooled Neon connection (its host contains `-pooler`) and run `scripts/migrate-hosted-postgres.sh` to apply `001_initial_schema.sql`, `002_ai_review_assessments.sql`, and `003_accountability_and_awards.sql`. This creates an empty production database; do not copy development accounts or uploaded proof into a public app.
-5. Replace `netlify.toml` with `netlify.real-app.toml`, deploy from the repository, and test sign-up, a proof upload, and partner review.
+5. Deploy from the repository, then test sign-up, a proof upload, and partner review.
 
 ## Security rules
 

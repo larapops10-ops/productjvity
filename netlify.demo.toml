@@ -1,0 +1,11 @@
+# Optional configuration for a visual-only Productjvity demo.
+# Copy this file to netlify.toml only when you deliberately want the demo,
+# rather than the database-backed app, to be deployed.
+[build]
+  command = "node scripts/build-netlify-demo.mjs"
+  publish = "dist/netlify-demo"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

@@ -1,6 +1,17 @@
 [build]
-  command = "node scripts/build-netlify-demo.mjs"
-  publish = "dist/netlify-demo"
+  command = ""
+  publish = "apps/web"
+  functions = "netlify/functions"
+
+[[redirects]]
+  from = "/v1/*"
+  to = "/.netlify/functions/api/v1/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/uploads/evidence/*"
+  to = "/.netlify/functions/api/uploads/evidence/:splat"
+  status = 200
 
 [[redirects]]
   from = "/*"
