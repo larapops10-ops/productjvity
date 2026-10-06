@@ -12,8 +12,8 @@ This keeps the original architecture: hosted PostgreSQL for app data, private Cl
 
 1. Create a hosted PostgreSQL database and copy its connection string.
 2. Create a private Cloudflare R2 bucket named `productjvity-evidence` and make an R2 API token with read/write access limited to that bucket.
-3. In Netlify, save these environment variables: `DATABASE_URL`, `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, and `R2_BUCKET`.
-4. Apply `db/migrations/001_initial_schema.sql`, `002_ai_review.sql`, and `003_accountability_and_awards.sql` to the hosted database, then import any desired local records.
+3. In Netlify, save these environment variables: `DATABASE_URL`, `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, and `R2_ENDPOINT`.
+4. Use the pooled Neon connection (its host contains `-pooler`) and run `scripts/migrate-hosted-postgres.sh` to apply `001_initial_schema.sql`, `002_ai_review_assessments.sql`, and `003_accountability_and_awards.sql`. This creates an empty production database; do not copy development accounts or uploaded proof into a public app.
 5. Replace `netlify.toml` with `netlify.real-app.toml`, deploy from the repository, and test sign-up, a proof upload, and partner review.
 
 ## Security rules
