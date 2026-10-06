@@ -1,18 +1,14 @@
 import { createHash, pbkdf2Sync, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
-import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
-import { resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import { pool } from "./database.js";
 import { buildSettlement } from "./settlement.js";
 import { queueAiAssistedReview } from "./ai-review.js";
 import { sendPartnerInvitation } from "./email.js";
+import { deleteEvidenceObject, getEvidenceObject, putEvidenceObject } from "./evidence-storage.js";
 
 const PASSWORD_ITERATIONS = 210_000;
 const SESSION_LIFETIME_SECONDS = 60 * 60 * 24 * 14;
 const MAX_EVIDENCE_BYTES = 5 * 1024 * 1024;
 const EVIDENCE_TYPES = { "image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp", "application/pdf": ".pdf" };
-const here = resolve(fileURLToPath(new URL(".", import.meta.url)));
-const uploadDirectory = resolve(here, "../../../uploads/evidence");
 
 const publicUser = (row) => ({
   id: row.id, email: row.email, name: row.name, role: row.role,
@@ -158,10 +154,8 @@ async function saveEvidence(body, commitmentId) {
   const duplicate = await pool.query("select id from evidence where commitment_id=$1 and sha256=$2", [commitmentId, sha256]);
   if (duplicate.rows[0]) return { error: "This exact proof file was already uploaded" };
 
-  await mkdir(uploadDirectory, { recursive: true });
   const storageKey = `${randomUUID()}${extension}`;
-  const diskPath = resolve(uploadDirectory, storageKey);
-  await writeFile(diskPath, bytes, { flag: "wx" });
+  await putEvidenceObject(storageKey, bytes, body.contentType);
   try {
     const id = randomUUID();
     const inserted = await pool.query(`insert into evidence (id,commitment_id,storage_key,file_url,content_type,size_bytes,sha256,note)
@@ -171,7 +165,7 @@ async function saveEvidence(body, commitmentId) {
     const evidence = inserted.rows[0];
     return { evidence: { id: evidence.id, storageKey: evidence.storage_key, fileUrl: evidence.file_url, contentType: evidence.content_type, sizeBytes: Number(evidence.size_bytes), sha256: evidence.sha256, note: evidence.note, submittedAt: evidence.submitted_at } };
   } catch (error) {
-    await unlink(diskPath).catch(() => {});
+    await deleteEvidenceObject(storageKey);
     throw error;
   }
 }
@@ -186,7 +180,7 @@ export async function serveEvidence(req, res, url) {
     where e.storage_key=$1 and (c.user_id=$2 or exists (select 1 from accountability_partners ap where ap.id=c.reviewer_partner_id and lower(ap.email)=lower($3) and ap.status='accepted'))`, [key, user.id, user.email]);
   if (!allowed.rows[0]) { res.writeHead(404, { "content-type": "application/json" }); res.end(JSON.stringify({ error: "evidence-not-found" })); return true; }
   try {
-    const bytes = await readFile(resolve(uploadDirectory, key));
+    const bytes = await getEvidenceObject(key);
     res.writeHead(200, { "content-type": allowed.rows[0].content_type, "content-disposition": "inline" });
     res.end(bytes);
   } catch { res.writeHead(404, { "content-type": "application/json" }); res.end(JSON.stringify({ error: "evidence-not-found" })); }

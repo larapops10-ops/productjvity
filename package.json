@@ -1,0 +1,11 @@
+{
+  "name": "productjvity-deployment",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:demo": "node scripts/build-netlify-demo.mjs"
+  },
+  "dependencies": {
+    "pg": "^8.23.1"
+  }
+}

@@ -1,11 +1,7 @@
 import { randomUUID } from "node:crypto";
-import { readFile } from "node:fs/promises";
-import { resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import { pool } from "./database.js";
+import { getEvidenceObject } from "./evidence-storage.js";
 
-const here = resolve(fileURLToPath(new URL(".", import.meta.url)));
-const uploadDirectory = resolve(here, "../../../uploads/evidence");
 const supportedImages = new Set(["image/jpeg", "image/png", "image/webp"]);
 const humanOnly = { nextStep: "manual review", reason: "AI review is not configured or this file type is not eligible" };
 
@@ -31,7 +27,7 @@ function assessmentSchema() {
 }
 
 async function requestGeminiAssessment(evidence, commitment) {
-  const bytes = await readFile(resolve(uploadDirectory, evidence.storage_key));
+  const bytes = await getEvidenceObject(evidence.storage_key);
   const prompt = [
     "You are helping a human reviewer assess task evidence.",
     `Task objective: ${commitment.objective}`,

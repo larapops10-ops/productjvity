@@ -1,0 +1,23 @@
+# Productjvity online deployment
+
+This keeps the original architecture: hosted PostgreSQL for app data, private Cloudflare R2 for proof files, and Netlify for the public site plus API function.
+
+## What is already prepared
+
+- `netlify/functions/api.mjs` runs the existing API as a Netlify Function.
+- `apps/api/src/evidence-storage.js` uses Cloudflare R2 when the R2 settings exist, while retaining local file storage for development.
+- `netlify.real-app.toml` contains the production routing rules. The existing `netlify.toml` remains the safe interactive-demo configuration until the real services are ready.
+
+## One-time account setup still required
+
+1. Create a hosted PostgreSQL database and copy its connection string.
+2. Create a private Cloudflare R2 bucket named `productjvity-evidence` and make an R2 API token with read/write access limited to that bucket.
+3. In Netlify, save these environment variables: `DATABASE_URL`, `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, and `R2_BUCKET`.
+4. Apply `db/migrations/001_initial_schema.sql`, `002_ai_review.sql`, and `003_accountability_and_awards.sql` to the hosted database, then import any desired local records.
+5. Replace `netlify.toml` with `netlify.real-app.toml`, deploy from the repository, and test sign-up, a proof upload, and partner review.
+
+## Security rules
+
+- Keep the R2 bucket private. Proof is read only through the authenticated API.
+- Never paste the database URL, R2 secret, Gemini key, or email token into GitHub or chat.
+- Start with no real payments. Add a regulated payment provider only after the public beta has been tested.
