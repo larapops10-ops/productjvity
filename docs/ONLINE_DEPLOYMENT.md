@@ -16,6 +16,13 @@ This keeps the original architecture: hosted PostgreSQL for app data, private Cl
 4. Use the pooled Neon connection (its host contains `-pooler`) and run `scripts/migrate-hosted-postgres.sh` to apply `001_initial_schema.sql`, `002_ai_review_assessments.sql`, and `003_accountability_and_awards.sql`. This creates an empty production database; do not copy development accounts or uploaded proof into a public app.
 5. Deploy from the repository, then test sign-up, a proof upload, and partner review.
 
+## Google sign-in
+
+1. In Google Cloud, create a **Web application** OAuth client and authorize `https://productjvity.netlify.app/v1/auth/google/callback` as its redirect URI.
+2. Save `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, and `GOOGLE_OAUTH_REDIRECT_URI=https://productjvity.netlify.app/v1/auth/google/callback` as secret Netlify variables for Production.
+3. Apply migration `004_google_sign_in.sql`, then redeploy. While the Google app is in Testing, add each tester's Google email under Google Auth Platform → Audience → Test users.
+4. Before changing Google to Production, publish a clear privacy policy and terms page and keep requested Google permissions limited to `openid`, `email`, and `profile`.
+
 ## Security rules
 
 - Keep the R2 bucket private. Proof is read only through the authenticated API.

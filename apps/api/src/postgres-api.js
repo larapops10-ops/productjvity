@@ -9,6 +9,7 @@ const PASSWORD_ITERATIONS = 210_000;
 const SESSION_LIFETIME_SECONDS = 60 * 60 * 24 * 14;
 const MAX_EVIDENCE_BYTES = 5 * 1024 * 1024;
 const EVIDENCE_TYPES = { "image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp", "application/pdf": ".pdf" };
+const GOOGLE_STATE_LIFETIME_SECONDS = 10 * 60;
 
 const publicUser = (row) => ({
   id: row.id, email: row.email, name: row.name, role: row.role,
@@ -73,6 +74,56 @@ async function issueSession(userId) {
   await pool.query(`insert into sessions (id,user_id,token_digest,expires_at)
     values ($1,$2,$3,now() + ($4 * interval '1 second'))`, [randomUUID(), userId, digest, SESSION_LIFETIME_SECONDS]);
   return token;
+}
+
+const googleConfigured = () => Boolean(process.env.GOOGLE_OAUTH_CLIENT_ID && process.env.GOOGLE_OAUTH_CLIENT_SECRET);
+const googleRedirectUri = (url) => process.env.GOOGLE_OAUTH_REDIRECT_URI || `${url.origin}/v1/auth/google/callback`;
+
+function redirect(res, location) {
+  res.writeHead(302, { location, "cache-control": "no-store" });
+  res.end();
+}
+
+async function createGoogleState() {
+  const state = randomBytes(32).toString("base64url");
+  await pool.query("delete from oauth_login_states where expires_at <= now()");
+  await pool.query(`insert into oauth_login_states (state,expires_at)
+    values ($1,now() + ($2 * interval '1 second'))`, [state, GOOGLE_STATE_LIFETIME_SECONDS]);
+  return state;
+}
+
+async function useGoogleState(state) {
+  const result = await pool.query(`delete from oauth_login_states
+    where state=$1 and expires_at > now() returning state`, [state]);
+  return Boolean(result.rows[0]);
+}
+
+async function googleProfile(code, redirectUri) {
+  const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ code, client_id: process.env.GOOGLE_OAUTH_CLIENT_ID, client_secret: process.env.GOOGLE_OAUTH_CLIENT_SECRET, redirect_uri: redirectUri, grant_type: "authorization_code" })
+  });
+  const tokens = await tokenResponse.json().catch(() => ({}));
+  if (!tokenResponse.ok || !tokens.access_token) throw new Error("Google could not complete the sign-in");
+  const profileResponse = await fetch("https://openidconnect.googleapis.com/v1/userinfo", { headers: { authorization: `Bearer ${tokens.access_token}` } });
+  const profile = await profileResponse.json().catch(() => ({}));
+  if (!profileResponse.ok || !profile.sub || !profile.email || profile.email_verified !== true) throw new Error("Google did not confirm a verified email address");
+  return { subject: String(profile.sub), email: String(profile.email).toLowerCase(), name: String(profile.name || profile.given_name || profile.email.split("@")[0]).trim() };
+}
+
+async function userForGoogleProfile(profile) {
+  const byGoogle = await pool.query("select * from users where google_subject=$1", [profile.subject]);
+  if (byGoogle.rows[0]) return byGoogle.rows[0];
+  const byEmail = await pool.query("select * from users where lower(email)=lower($1)", [profile.email]);
+  if (byEmail.rows[0]) {
+    const linked = await pool.query(`update users set google_subject=$1
+      where id=$2 and (google_subject is null or google_subject=$1) returning *`, [profile.subject, byEmail.rows[0].id]);
+    if (linked.rows[0]) return linked.rows[0];
+    throw new Error("This email is already linked to a different Google account");
+  }
+  return (await pool.query(`insert into users (id,email,name,role,password_hash,google_subject)
+    values ($1,$2,$3,'user',null,$4) returning *`, [randomUUID(), profile.email, profile.name || "Productjvity member", profile.subject])).rows[0];
 }
 
 async function commitmentView(row) {
@@ -190,6 +241,35 @@ export async function serveEvidence(req, res, url) {
 export async function handlePostgresApi(req, res, url, send) {
   const path = url.pathname.replace(/^\/v1/, "").split("/").filter(Boolean);
   const method = req.method;
+
+  if (method === "GET" && path.join("/") === "auth/google") {
+    if (!googleConfigured()) return send(503, { error: "Google sign-in is not ready yet" });
+    const state = await createGoogleState();
+    const parameters = new URLSearchParams({
+      client_id: process.env.GOOGLE_OAUTH_CLIENT_ID,
+      redirect_uri: googleRedirectUri(url),
+      response_type: "code",
+      scope: "openid email profile",
+      state,
+      prompt: "select_account"
+    });
+    return redirect(res, `https://accounts.google.com/o/oauth2/v2/auth?${parameters}`);
+  }
+
+  if (method === "GET" && path.join("/") === "auth/google/callback") {
+    const appOrigin = new URL(googleRedirectUri(url)).origin;
+    const fail = (reason) => redirect(res, `${appOrigin}/#google-error=${encodeURIComponent(reason)}`);
+    if (url.searchParams.get("error")) return fail("Google sign-in was cancelled.");
+    const code = url.searchParams.get("code");
+    const state = url.searchParams.get("state");
+    if (!code || !state || !(await useGoogleState(state))) return fail("This Google sign-in link has expired. Please try again.");
+    try {
+      const user = await userForGoogleProfile(await googleProfile(code, googleRedirectUri(url)));
+      return redirect(res, `${appOrigin}/#google-auth=${encodeURIComponent(await issueSession(user.id))}`);
+    } catch (error) {
+      return fail(error.message || "Google sign-in did not finish. Please try again.");
+    }
+  }
 
   if (method === "POST" && path.join("/") === "auth/signup") {
     const body = await readJson(req);

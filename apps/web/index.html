@@ -81,7 +81,7 @@
 </section>
 <section class="page" id="p-account">
 <div class="eyebrow">ACCOUNT</div><h1>Sign in</h1><p class="sub" id="accountState">Create an account to keep your commitments private.</p>
-<div class="card"><div class="eyebrow">Create account</div><div style="display:grid;gap:10px;margin-top:10px"><input id="signUpName" placeholder="Your name"><input id="signUpEmail" type="email" placeholder="Email address"><div class="row" style="margin:0"><input id="signUpPassword" type="password" placeholder="Password (at least 10 characters)" style="flex:1;min-width:180px"><button type="button" class="btn btn-s" id="showSignUpPassword">Show</button></div><button type="button" class="btn btn-p" id="signUp">Create account</button></div></div>
+<div class="card"><div class="eyebrow">Create account</div><div style="display:grid;gap:10px;margin-top:10px"><button type="button" class="btn btn-s" id="googleSignIn">Continue with Google</button><p class="meta" style="margin:0">or use your email address</p><input id="signUpName" placeholder="Your name"><input id="signUpEmail" type="email" placeholder="Email address"><div class="row" style="margin:0"><input id="signUpPassword" type="password" placeholder="Password (at least 10 characters)" style="flex:1;min-width:180px"><button type="button" class="btn btn-s" id="showSignUpPassword">Show</button></div><button type="button" class="btn btn-p" id="signUp">Create account</button></div></div>
 <div class="card"><div class="eyebrow">Already have an account?</div><div style="display:grid;gap:10px;margin-top:10px"><input id="loginEmail" type="email" placeholder="Email address"><div class="row" style="margin:0"><input id="loginPassword" type="password" placeholder="Password" style="flex:1;min-width:180px"><button type="button" class="btn btn-s" id="showLoginPassword">Show</button></div><button type="button" class="btn btn-s" id="login">Sign in</button><button type="button" class="btn btn-s" id="logout" style="display:none">Sign out</button></div></div>
 <div class="card"><div class="eyebrow">ACCOUNTABILITY PARTNERS</div><p class="sub">People you trust to give an honest answer when you submit a goal.</p><div class="row"><input id="accountPartnerName" placeholder="Their name" style="flex:1;min-width:130px"><input id="accountPartnerEmail" type="email" placeholder="Their email address" style="flex:1;min-width:180px"><button type="button" class="btn btn-s" id="accountInvite">Add partner</button></div><div id="accountPartnerList" class="meta" style="margin-top:10px">Sign in to manage your partners.</div></div>
 <div class="card"><div class="eyebrow">GOALS WAITING FOR YOUR REVIEW</div><p class="sub">If a friend invited you, their submitted proof will appear here.</p><div id="reviewInviteList" class="meta">Sign in to see invitations.</div><div id="reviewQueueList" class="meta" style="margin-top:10px"></div></div>
@@ -201,6 +201,7 @@ function saveSession(r){
 }
 $("signUp").addEventListener("click",function(){ call("POST","/auth/signup",{name:$("signUpName").value.trim(),email:$("signUpEmail").value.trim(),password:$("signUpPassword").value}).then(function(r){ if(r.status===201) saveSession(r); else err(r.body.error||"Could not create account"); }); });
 $("login").addEventListener("click",function(){ call("POST","/auth/login",{email:$("loginEmail").value.trim(),password:$("loginPassword").value}).then(function(r){ if(r.status===200) saveSession(r); else err(r.body.error||"Could not sign in"); }); });
+$("googleSignIn").addEventListener("click",function(){ if(demoMode){ err("Google sign-in is available in the live Productjvity app."); return; } window.location.assign(API+"/auth/google"); });
 $("logout").addEventListener("click",function(){ call("POST","/auth/logout",{}).then(function(){ authToken=""; localStorage.removeItem("productjvity_auth_token"); loadAccount(); load(); }); });
 function wirePasswordToggle(inputId,buttonId){ var input=$(inputId),button=$(buttonId); button.addEventListener("click",function(){ var showing=input.type==="text"; input.type=showing?"password":"text"; button.textContent=showing?"Show":"Hide"; }); }
 wirePasswordToggle("signUpPassword","showSignUpPassword");
@@ -469,7 +470,18 @@ function loadProfile(){
     $("consentBox").checked=!!me.body.user.consentProfilePublic;
   }); });
 }
-if(authToken) load(); else go("welcome");
+var googleResult=new URLSearchParams(window.location.hash.replace(/^#/,""));
+if(googleResult.get("google-auth")){
+  authToken=googleResult.get("google-auth");
+  localStorage.setItem("productjvity_auth_token",authToken);
+  history.replaceState(null,"",window.location.pathname);
+  go("dash");
+  loadAccount();
+}else if(googleResult.get("google-error")){
+  history.replaceState(null,"",window.location.pathname);
+  go("account");
+  err(googleResult.get("google-error"));
+}else if(authToken) load(); else go("welcome");
 })();
 </script>
 </body>
