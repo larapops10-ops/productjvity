@@ -19,7 +19,7 @@ This keeps the original architecture: hosted PostgreSQL for app data, private Cl
 ## Google sign-in
 
 1. In Google Cloud, create a **Web application** OAuth client and authorize `https://productjvity.netlify.app/v1/auth/google/callback` as its redirect URI.
-2. Save `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, and `GOOGLE_OAUTH_REDIRECT_URI=https://productjvity.netlify.app/v1/auth/google/callback` as secret Netlify variables for Production.
+2. Save `GOOGLE_OAUTH_CLIENT_ID` and `GOOGLE_OAUTH_CLIENT_SECRET` as secret Netlify variables for Production. The app safely derives its own callback address, so no production redirect variable is needed.
 3. Apply migration `004_google_sign_in.sql`, then redeploy. While the Google app is in Testing, add each tester's Google email under Google Auth Platform → Audience → Test users.
 4. Before changing Google to Production, publish a clear privacy policy and terms page and keep requested Google permissions limited to `openid`, `email`, and `profile`.
 
