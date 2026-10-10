@@ -106,10 +106,16 @@ async function googleProfile(code, redirectUri) {
     body: new URLSearchParams({ code, client_id: process.env.GOOGLE_OAUTH_CLIENT_ID, client_secret: process.env.GOOGLE_OAUTH_CLIENT_SECRET, redirect_uri: redirectUri, grant_type: "authorization_code" })
   });
   const tokens = await tokenResponse.json().catch(() => ({}));
-  if (!tokenResponse.ok || !tokens.access_token) throw new Error("Google could not complete the sign-in");
+  if (!tokenResponse.ok || !tokens.access_token) {
+    console.error("Google token exchange failed", { status: tokenResponse.status, error: tokens.error || "unknown" });
+    throw new Error("Google token exchange failed");
+  }
   const profileResponse = await fetch("https://openidconnect.googleapis.com/v1/userinfo", { headers: { authorization: `Bearer ${tokens.access_token}` } });
   const profile = await profileResponse.json().catch(() => ({}));
-  if (!profileResponse.ok || !profile.sub || !profile.email || profile.email_verified !== true) throw new Error("Google did not confirm a verified email address");
+  if (!profileResponse.ok || !profile.sub || !profile.email || profile.email_verified !== true) {
+    console.error("Google profile request failed", { status: profileResponse.status });
+    throw new Error("Google profile request failed");
+  }
   return { subject: String(profile.sub), email: String(profile.email).toLowerCase(), name: String(profile.name || profile.given_name || profile.email.split("@")[0]).trim() };
 }
 

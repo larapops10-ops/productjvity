@@ -101,7 +101,9 @@ if(demoMode){ document.title="Productjvity — Interactive preview"; var preview
 var errBox = document.getElementById("err");
 function err(m){
   var raw=String(m||"").toLowerCase(), friendly="Something did not work just now. Please try again.";
-  if(raw.indexOf("google")>-1||raw.indexOf("oauth")>-1) friendly="We could not finish Google sign-in. Please use Firefox or Chrome, make sure this Google email is a test user, then try again.";
+  if(raw.indexOf("token exchange")>-1) friendly="Google could not verify the app securely. The app owner needs to check the Google client secret in Netlify, then try again.";
+  else if(raw.indexOf("profile request")>-1) friendly="Google could not share your account details with Productjvity. Please try again, or use email and password for now.";
+  else if(raw.indexOf("google")>-1||raw.indexOf("oauth")>-1) friendly="We could not finish Google sign-in. Please use Firefox or Chrome, make sure this Google email is a test user, then try again.";
   else if(raw.indexOf("expired")>-1) friendly="That Google sign-in attempt expired. Please choose Continue with Google again.";
   else if(raw.indexOf("sign-in")>-1||raw.indexOf("401")>-1) friendly="Please sign in to continue.";
   else if(raw.indexOf("password")>-1||raw.indexOf("email")>-1) friendly="Check your email and password, then try again.";
