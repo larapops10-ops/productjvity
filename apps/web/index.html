@@ -46,7 +46,7 @@
 <div class="steps"><i class="on" id="s1"></i><i id="s2"></i><i id="s3"></i><i id="s4"></i></div>
 <div id="w1"><input id="fGoal" placeholder="e.g. Finish certification"><div class="row"><button class="btn btn-p" data-w="2">Continue →</button></div></div>
 <div id="w2" style="display:none"><input id="fCrit" placeholder="What does finished look like?"><p class="meta">Add the small milestones that will help you get there.</p><div class="row"><input id="fMilestone" placeholder="e.g. Read chapter 1" style="flex:1;min-width:180px"><button class="btn btn-s" type="button" id="addMilestone">Add milestone</button></div><div id="milestoneDrafts" class="meta" style="margin-top:10px"></div><div class="row"><button class="btn btn-s" data-w="1">← Back</button><button class="btn btn-p" data-w="3">Continue →</button></div></div>
-<div id="w3" style="display:none"><input id="fDate" type="date"><input id="fStake" type="number" min="0" placeholder="Stake amount, minor units (0 = no money)"><div class="row"><button class="btn btn-s" data-w="2">← Back</button><button class="btn btn-p" data-w="4">Review →</button></div></div>
+<div id="w3" style="display:none"><label class="meta" for="fDate">When would you like to finish?</label><input id="fDate" type="date"><label class="meta" for="fStake">Optional: would a small commitment amount help you follow through?</label><input id="fStake" type="number" min="0" step="1" inputmode="numeric" placeholder="Amount in naira — for example, 500"><p class="meta">You can leave this at ₦0. This is only a practice payment for now; no real money will be taken.</p><div class="row"><button class="btn btn-s" data-w="2">← Back</button><button class="btn btn-p" data-w="4">Review →</button></div></div>
 <div id="w4" style="display:none"><p class="sub" id="review"></p><div class="card" style="padding:16px"><div class="eyebrow">WHO SHOULD CONFIRM THIS GOAL?</div><p class="meta">A goal with money attached needs someone independent to confirm the result.</p><label style="display:flex;gap:8px;padding:6px 0"><input type="radio" name="reviewMode" value="self" checked style="width:auto"> I will reflect on my own progress <span class="meta">(for goals without money)</span></label><label style="display:flex;gap:8px;padding:6px 0"><input type="radio" name="reviewMode" value="partner" style="width:auto"> An accountability partner</label><label style="display:flex;gap:8px;padding:6px 0"><input type="radio" name="reviewMode" value="platform" style="width:auto"> Productjvity review</label><div id="partnerChoice" style="display:none;margin-top:10px"><select id="fPartner"><option value="">Choose a partner</option></select><p class="meta">Or invite someone new. They will need to sign in with this email and accept before a money-backed goal can start.</p><div class="row"><input id="fPartnerName" placeholder="Their name" style="flex:1;min-width:130px"><input id="fPartnerEmail" type="email" placeholder="Their email address" style="flex:1;min-width:180px"><button type="button" class="btn btn-s" id="invitePartner">Add partner</button></div><div class="meta" id="partnerHint"></div></div></div><div class="row"><button class="btn btn-s" data-w="3">← Back</button><button class="btn btn-p" id="create">Create my goal</button></div></div>
 </div>
 <div class="card" id="afterCreate" style="display:none"></div>
@@ -101,7 +101,9 @@ if(demoMode){ document.title="Productjvity — Interactive preview"; var preview
 var errBox = document.getElementById("err");
 function err(m){
   var raw=String(m||"").toLowerCase(), friendly="Something did not work just now. Please try again.";
-  if(raw.indexOf("sign-in")>-1||raw.indexOf("401")>-1) friendly="Please sign in to continue.";
+  if(raw.indexOf("google")>-1||raw.indexOf("oauth")>-1) friendly="We could not finish Google sign-in. Please use Firefox or Chrome, make sure this Google email is a test user, then try again.";
+  else if(raw.indexOf("expired")>-1) friendly="That Google sign-in attempt expired. Please choose Continue with Google again.";
+  else if(raw.indexOf("sign-in")>-1||raw.indexOf("401")>-1) friendly="Please sign in to continue.";
   else if(raw.indexOf("password")>-1||raw.indexOf("email")>-1) friendly="Check your email and password, then try again.";
   else if(raw.indexOf("upload")>-1||raw.indexOf("file")>-1) friendly="We could not add that proof. Please check the file and try again.";
   else if(raw.indexOf("network")>-1||raw.indexOf("reach")>-1) friendly="We cannot connect right now. Please check your connection and try again.";
@@ -110,9 +112,10 @@ function err(m){
   else if(raw.indexOf("partner")>-1) friendly="Your accountability partner needs to accept the invitation first.";
   else if(raw.indexOf("reviewer")>-1) friendly="This goal is waiting for its independent review.";
   else if(raw.indexOf("objective")>-1||raw.indexOf("goal")>-1) friendly="Tell us what you would like to work on first.";
-  errBox.style.display="block"; errBox.textContent=friendly;
+  errBox.style.display="block"; errBox.style.background=""; errBox.style.borderColor=""; errBox.textContent=friendly;
 }
 function notice(message){ errBox.style.display="block"; errBox.style.background="#E8F0E9"; errBox.style.borderColor="#A8C3AA"; errBox.textContent=message; }
+function naira(minorAmount){ return "₦"+(Number(minorAmount||0)/100).toLocaleString("en-NG",{maximumFractionDigits:2}); }
 function $(id){ return document.getElementById(id); }
 function statusText(status){ return ({draft:"Not started",active:"In progress",pending_verification:"Ready for review",successful:"Completed",unsuccessful:"Not completed this time",settled:"Finished",disputed:"Being reviewed"})[status]||"In progress"; }
 var draftedMilestones=[];
@@ -347,9 +350,9 @@ $("addMilestone").addEventListener("click",function(){ var title=$("fMilestone")
 $("milestoneDrafts").addEventListener("click",function(event){ var i=event.target.getAttribute("data-remove-milestone"); if(i!==null){draftedMilestones.splice(+i,1);drawMilestones();} });
 function wiz(s){
   ["w1","w2","w3","w4"].forEach(function(id,x){ $(id).style.display=(x+1===+s)?"block":"none"; $("s"+(x+1)).classList.toggle("on",x+1<=+s); });
-  var titles={1:"What do you want to accomplish?",2:"What does success look like?",3:"Deadline + stake",4:"Review + accept rules"};
+  var titles={1:"What do you want to accomplish?",2:"What does success look like?",3:"Finish date + commitment",4:"Review + accept rules"};
   $("wTitle").textContent=titles[s];
-  if(s==="4"){ $("review").textContent="Goal: "+$("fGoal").value+" · Success: "+($("fCrit").value||"(default)")+" · Deadline: "+$("fDate").value+" · Stake: "+($("fStake").value||0)+" (simulated, no money in Stage 2)"; loadGoalPartners(); refreshPartnerChoice(); }
+  if(s==="4"){ var commitmentNaira=Number($("fStake").value||0); var commitmentText=commitmentNaira>0?"Commitment: "+naira(commitmentNaira*100)+" — practice only; no real money will be taken.":"No money attached — this goal is about your progress."; $("review").textContent="Goal: "+$("fGoal").value+" · Success: "+($("fCrit").value||"(default)")+" · Finish date: "+$("fDate").value+" · "+commitmentText; loadGoalPartners(); refreshPartnerChoice(); }
 }
 function chosenReviewMode(){ return document.querySelector("input[name='reviewMode']:checked").value; }
 function refreshPartnerChoice(){ $("partnerChoice").style.display=chosenReviewMode()==="partner"?"block":"none"; }
@@ -360,7 +363,7 @@ function loadGoalPartners(){
 var reviewModes=document.querySelectorAll("input[name='reviewMode']"); for(var rm=0;rm<reviewModes.length;rm++)reviewModes[rm].addEventListener("change",refreshPartnerChoice);
 $("invitePartner").addEventListener("click",function(){ var name=$("fPartnerName").value.trim(),email=$("fPartnerEmail").value.trim(); if(!email){err("Enter your partner's email address first.");return;} addPartner(name,email,function(p){ $("fPartnerName").value="";$("fPartnerEmail").value="";$("partnerHint").textContent="Invitation saved. Ask "+(p.name||p.email)+" to sign in and accept it."; setTimeout(function(){$("fPartner").value=p.id;},0); }); });
 $("create").addEventListener("click",function(){
-  var mode=chosenReviewMode(), stake=+($("fStake").value||0), partnerId=$("fPartner").value;
+  var mode=chosenReviewMode(), stakeNaira=+($("fStake").value||0), stake=Math.round(stakeNaira*100), partnerId=$("fPartner").value;
   if(stake>0&&mode==="self"){err("Choose an independent reviewer for a goal with money attached.");return;}
   if(mode==="partner"&&!partnerId){err("Choose or add an accountability partner first.");return;}
   call("POST","/commitments",{objective:$("fGoal").value,successCriteria:$("fCrit").value,deadline:$("fDate").value,stakeAmount:stake,milestones:draftedMilestones,reviewMode:mode,reviewerPartnerId:partnerId}).then(function(r){
