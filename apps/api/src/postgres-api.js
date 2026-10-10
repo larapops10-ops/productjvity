@@ -4,7 +4,7 @@ import { buildSettlement } from "./settlement.js";
 import { queueAiAssistedReview } from "./ai-review.js";
 import { sendPartnerInvitation } from "./email.js";
 import { deleteEvidenceObject, getEvidenceObject, putEvidenceObject } from "./evidence-storage.js";
-import { confirmTestPayment, startTestPayment } from "./paystack-demo.js";
+import { confirmTestPayment, startTestPayment } from "./flutterwave-demo.js";
 
 const PASSWORD_ITERATIONS = 210_000;
 const SESSION_LIFETIME_SECONDS = 60 * 60 * 24 * 14;
@@ -272,11 +272,12 @@ export async function handlePostgresApi(req, res, url, send) {
     }
   }
 
-  if (method === "GET" && path.join("/") === "payments/paystack/callback") {
-    const reference = url.searchParams.get("reference");
+  if (method === "GET" && path.join("/") === "payments/flutterwave/callback") {
+    const reference = url.searchParams.get("tx_ref") || url.searchParams.get("reference");
+    const transactionId = url.searchParams.get("transaction_id");
     const finish = (result) => redirect(res, `${url.origin}/#payment-demo=${result}`);
     if (!reference) return finish("cancelled");
-    try { return finish((await confirmTestPayment(reference)) ? "success" : "failed"); }
+    try { return finish((await confirmTestPayment(reference, transactionId)) ? "success" : "failed"); }
     catch { return finish("failed"); }
   }
 
