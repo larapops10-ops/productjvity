@@ -112,6 +112,7 @@ function err(m){
   else if(raw.indexOf("objective")>-1||raw.indexOf("goal")>-1) friendly="Tell us what you would like to work on first.";
   errBox.style.display="block"; errBox.textContent=friendly;
 }
+function notice(message){ errBox.style.display="block"; errBox.style.background="#E8F0E9"; errBox.style.borderColor="#A8C3AA"; errBox.textContent=message; }
 function $(id){ return document.getElementById(id); }
 function statusText(status){ return ({draft:"Not started",active:"In progress",pending_verification:"Ready for review",successful:"Completed",unsuccessful:"Not completed this time",settled:"Finished",disputed:"Being reviewed"})[status]||"In progress"; }
 var draftedMilestones=[];
@@ -240,6 +241,7 @@ function openDetail(id){
     var B=$("dBody"); B.innerHTML="";
     function btn(label,fn,primary){ var b=document.createElement("button"); b.type="button"; b.className="btn "+(primary?"btn-p":"btn-s"); b.textContent=label; b.onclick=fn; return b; }
     var row=document.createElement("div"); row.className="row";
+    if(c.status==="draft"&&Number(c.stakeAmount)>0) row.appendChild(btn("Try test payment",function(){ call("POST","/commitments/"+id+"/payment-demo",{}).then(function(x){ if(x.status===200&&x.body.authorizationUrl) window.location.assign(x.body.authorizationUrl); else err(x.body.error||"The test payment could not start."); }); }));
     if(c.status==="draft") row.appendChild(btn("Start this goal",function(){ call("POST","/commitments/"+id+"/activate").then(function(r){if(r.status===200){openDetail(id);load();}else err(r.body.error||"This goal cannot start yet.");}); },true));
     if(c.status==="active") row.appendChild(btn("Ask for a review",function(){ call("POST","/commitments/"+id+"/submit-for-verification").then(function(){openDetail(id);load();}); },true));
     if(c.status==="successful"||c.status==="unsuccessful") row.appendChild(btn("See my result",function(){ call("POST","/commitments/"+id+"/settle").then(function(){openDetail(id);load();}); },true));
@@ -471,6 +473,12 @@ function loadProfile(){
   }); });
 }
 var googleResult=new URLSearchParams(window.location.hash.replace(/^#/,""));
+if(googleResult.get("payment-demo")){
+  var paymentResult=googleResult.get("payment-demo");
+  history.replaceState(null,"",window.location.pathname);
+  go("dash");
+  if(paymentResult==="success") notice("Test payment confirmed. No real money was collected."); else err("The test payment was not completed.");
+}
 if(googleResult.get("google-auth")){
   authToken=googleResult.get("google-auth");
   localStorage.setItem("productjvity_auth_token",authToken);

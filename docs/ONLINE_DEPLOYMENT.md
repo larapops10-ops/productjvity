@@ -23,6 +23,12 @@ This keeps the original architecture: hosted PostgreSQL for app data, private Cl
 3. Apply migration `004_google_sign_in.sql`, then redeploy. While the Google app is in Testing, add each tester's Google email under Google Auth Platform → Audience → Test users.
 4. Before changing Google to Production, publish a clear privacy policy and terms page and keep requested Google permissions limited to `openid`, `email`, and `profile`.
 
+## Paystack test payment demo
+
+1. Add a Paystack **test** secret key as the secret Netlify variable `PAYSTACK_SECRET_KEY` for Production. Never use a live key for the beta demo.
+2. Apply migration `005_payment_demo.sql` and redeploy.
+3. A goal with a test stake displays **Try test payment** before it starts. This records a test result only: it does not hold, forfeit, refund, or pay out real money.
+
 ## Security rules
 
 - Keep the R2 bucket private. Proof is read only through the authenticated API.

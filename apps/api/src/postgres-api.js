@@ -4,6 +4,7 @@ import { buildSettlement } from "./settlement.js";
 import { queueAiAssistedReview } from "./ai-review.js";
 import { sendPartnerInvitation } from "./email.js";
 import { deleteEvidenceObject, getEvidenceObject, putEvidenceObject } from "./evidence-storage.js";
+import { confirmTestPayment, startTestPayment } from "./paystack-demo.js";
 
 const PASSWORD_ITERATIONS = 210_000;
 const SESSION_LIFETIME_SECONDS = 60 * 60 * 24 * 14;
@@ -271,6 +272,14 @@ export async function handlePostgresApi(req, res, url, send) {
     }
   }
 
+  if (method === "GET" && path.join("/") === "payments/paystack/callback") {
+    const reference = url.searchParams.get("reference");
+    const finish = (result) => redirect(res, `${url.origin}/#payment-demo=${result}`);
+    if (!reference) return finish("cancelled");
+    try { return finish((await confirmTestPayment(reference)) ? "success" : "failed"); }
+    catch { return finish("failed"); }
+  }
+
   if (method === "POST" && path.join("/") === "auth/signup") {
     const body = await readJson(req);
     const name = String(body.name || "").trim();
@@ -488,6 +497,14 @@ export async function handlePostgresApi(req, res, url, send) {
   if (method === "GET" && path[2] === "outcome") {
     if (commitment.status !== "settled") return send(409, { error: "not settled yet", status: commitment.status });
     return send(200, await settlementReceipt(commitment));
+  }
+
+  if (method === "POST" && path[2] === "payment-demo") {
+    try {
+      return send(200, { testMode: true, ...(await startTestPayment({ commitment, user, origin: url.origin })) });
+    } catch (error) {
+      return send(422, { error: error.message || "The test payment could not start" });
+    }
   }
 
   if (method === "POST" && path[2] === "activate") {
