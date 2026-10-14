@@ -4,6 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Productjvity — Make steady progress</title>
+<meta name="theme-color" content="#58735F">
+<meta name="description" content="A gentle accountability app for meaningful goals, proof, and progress.">
+<link rel="manifest" href="site.webmanifest">
+<link rel="icon" href="productjvity-icon.svg" type="image/svg+xml">
 <style>
 :root{--bg:#F7F6F1;--card:#fff;--ink:#26302B;--mut:#747B75;--line:#E4E5DE;--ac:#58735F;--acS:#E8F0E9;--r:20px;--sh:0 2px 4px rgba(29,42,33,.04),0 16px 38px -20px rgba(29,42,33,.2)}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,-apple-system,"Segoe UI",Roboto,sans-serif}
@@ -92,7 +96,7 @@
 (function(){
 "use strict";
 var API = "/v1"; // PostgreSQL API, served from the same local address as this page
-var demoMode = window.PRODUCTJVITY_DEMO === true;
+var demoMode = window.PRODUCTJVITY_DEMO === true || new URLSearchParams(window.location.search).get("demo")==="1";
 var authToken = localStorage.getItem("productjvity_auth_token") || "";
 var currentUserId = "";
 var demoCommitments=[{id:"demo-read",objective:"Finish my professional reading plan",deadline:"2026-10-31",stakeAmount:0,currency:"NGN",status:"active",reviewMode:"self",progressPct:50,milestones:[{id:"demo-m1",title:"Read the first two chapters",done:true},{id:"demo-m2",title:"Write down three useful ideas",done:false}],evidence:[],verifications:[]}];
@@ -496,6 +500,7 @@ if(googleResult.get("google-auth")){
   go("account");
   err(googleResult.get("google-error"));
 }else if(authToken) load(); else go("welcome");
+if("serviceWorker" in navigator) navigator.serviceWorker.register("service-worker.js").catch(function(){});
 })();
 </script>
 </body>

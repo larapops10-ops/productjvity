@@ -1,0 +1,18 @@
+{
+  "name": "Productjvity — Make steady progress",
+  "short_name": "Productjvity",
+  "description": "A gentle accountability app for meaningful goals, proof, and progress.",
+  "start_url": "/?demo=1",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#F7F6F1",
+  "theme_color": "#58735F",
+  "icons": [
+    {
+      "src": "productjvity-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
