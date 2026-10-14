@@ -24,6 +24,7 @@
 .welcome{position:relative;overflow:hidden;min-height:700px;padding:118px 72px 56px;border-radius:28px;background:radial-gradient(circle at 11% 0%,rgba(202,220,200,.65),transparent 21%),radial-gradient(circle at 99% 48%,rgba(214,204,232,.65),transparent 26%),linear-gradient(140deg,#FEFEFB,#F5F6F0);isolation:isolate}.welcome:before{content:"";position:absolute;width:460px;height:460px;left:-225px;top:-180px;border:78px solid rgba(150,183,151,.24);border-radius:50%;z-index:-1}.welcome:after{content:"";position:absolute;width:370px;height:370px;right:-210px;bottom:100px;border:72px solid rgba(155,138,196,.24);border-radius:50%;z-index:-1}.hero-desk{position:absolute;z-index:0;left:0;bottom:0;width:100%;height:auto;opacity:.78;pointer-events:none}.welcome>*:not(.hero-desk){position:relative;z-index:1}.welcome-auth{position:absolute;top:26px;right:28px;display:flex;gap:10px;z-index:2!important}.welcome-auth .btn{padding:11px 20px}.welcome h1{max-width:850px;font-size:55px;line-height:1.08;margin:26px auto 16px;text-align:center}.welcome>.sub{max-width:720px;font-size:18px;line-height:1.6;text-align:center;margin:0 auto 30px}.hero-tag{display:table;margin:0 auto;padding:10px 18px;border-radius:999px;background:linear-gradient(90deg,#E5EFE4,#F0EAF8);color:#34463A;box-shadow:0 5px 15px rgba(72,91,75,.08)}.hero-tag:before{content:"✦";color:var(--lav);font-size:15px;margin-right:9px}.welcome .card{max-width:480px;background:rgba(255,255,255,.86);backdrop-filter:blur(8px)}.promise-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:28px;max-width:900px;margin:34px auto}.promise{background:rgba(255,255,255,.93);border:1px solid #DEE3DA;border-radius:18px;padding:28px 26px 25px;font-size:16px;line-height:1.5;color:#4D5650;box-shadow:0 10px 24px rgba(35,48,39,.08)}.promise b{display:block;margin:15px 0 7px;color:#222923;font-family:Georgia,"Times New Roman",serif;font-size:25px;line-height:1.15}.feature-icon{width:57px;height:57px;display:block;stroke:var(--ac);fill:none;stroke-width:2.1;stroke-linecap:round;stroke-linejoin:round}.promise:nth-child(2) .feature-icon{stroke:var(--lav)}.promise:nth-child(3) .feature-icon{stroke:var(--ac)}
 #err{display:none;background:#FDE8E8;border:1px solid #E5A49C;border-radius:12px;padding:10px 14px;margin-bottom:12px;font-size:13.5px}
 .install-prompt{display:none;position:fixed;z-index:50;right:24px;bottom:24px;width:min(390px,calc(100vw - 32px));padding:16px;border:1px solid #D8E1D6;border-radius:18px;background:rgba(255,255,255,.98);box-shadow:0 18px 45px rgba(29,42,33,.2);color:var(--ink)}.install-prompt.on{display:block}.install-prompt strong{display:block;font-family:Georgia,"Times New Roman",serif;font-size:19px}.install-prompt p{margin:6px 0 12px;color:var(--mut);font-size:13.5px;line-height:1.45}.install-prompt .install-close{position:absolute;right:10px;top:8px;border:0;background:transparent;color:var(--mut);font-size:22px;line-height:1;cursor:pointer}.install-prompt .row{margin:0}
+.award-card{display:flex;gap:13px;align-items:center;padding:14px;border:1px solid #DED8EE;border-radius:14px;background:linear-gradient(100deg,#F8F5FC,#F4F8F3);margin:8px 0}.award-seal{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#9B8AC4,#58735F);color:white;font-size:23px;box-shadow:0 6px 14px rgba(88,115,95,.18)}.award-card b{display:block;font-family:Georgia,"Times New Roman",serif;margin-bottom:3px}
 .ver{font-size:11px;color:var(--mut);padding:0 10px}.mobile-nav{display:none}
 .pill{font-size:11.5px;font-weight:700;border-radius:99px;padding:3px 10px;background:var(--acS);color:var(--ac)}
 @media(max-width:820px){.side{display:none}.main{padding:28px 18px 105px}.welcome{padding:138px 20px 46px;min-height:500px}.hero-desk{display:none}.welcome-auth{top:16px;left:16px;right:16px;display:grid;grid-template-columns:1fr 1fr;gap:9px}.welcome-auth .btn{padding:10px 8px;white-space:nowrap}.welcome h1{font-size:40px;text-align:left;margin:18px 0 14px}.welcome>.sub{text-align:left;margin-left:0}.hero-tag{margin-left:0}.promise-grid{grid-template-columns:1fr;gap:14px}.install-prompt{right:16px;bottom:82px}.mobile-nav{display:flex;position:fixed;z-index:20;left:0;right:0;bottom:0;justify-content:space-around;gap:2px;padding:9px 6px max(9px,env(safe-area-inset-bottom));background:rgba(255,255,255,.96);border-top:1px solid var(--line);box-shadow:0 -8px 28px rgba(29,42,33,.08)}.mobile-nav button{flex:1;border:0;border-radius:10px;padding:8px 3px;color:#56605A;font-size:10px;font-weight:700;background:transparent}.mobile-nav button.on{background:var(--acS);color:var(--ac)}}
@@ -81,8 +82,15 @@
 <section class="page" id="p-profile">
 <div class="eyebrow">MY PROGRESS</div><h1>Every step counts.</h1><p class="sub">Look back at what you have made progress on.</p>
 <div class="card"><label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="consentBox" style="width:auto"> Let others see my progress</label></div>
+<div class="card" id="progressShare" style="display:none"><div class="eyebrow">YOUR PUBLIC PROGRESS</div><p class="sub">Your progress is visible to people with your link. Share a little proof of what you are building.</p><div class="row"><button type="button" class="btn btn-p" id="shareProgress">Share progress</button><button type="button" class="btn btn-s" id="copyProgressLink">Copy public link</button></div></div>
 <div class="card" id="histBox"></div>
 <div class="card"><div class="eyebrow">YOUR AWARDS</div><p class="sub">Small moments worth celebrating.</p><div id="awardList" class="meta">Loading your awards…</div></div>
+</section>
+<section class="page" id="p-public">
+<div class="eyebrow">PUBLIC PROGRESS</div><h1>Demo member is following through.</h1><p class="sub">A small, shareable look at the milestones and awards they have chosen to make public.</p>
+<div class="card"><div class="eyebrow">CURRENT GOAL</div><h3>Finish my professional reading plan</h3><p class="sub">One of two milestones achieved · 50% complete</p><div class="bar"><i style="width:50%"></i></div></div>
+<div class="card"><div class="eyebrow">LATEST AWARD</div><div class="award-card"><div class="award-seal">✦</div><div><b>Milestone achieved badge</b><span class="meta">Awarded for completing a meaningful first step.</span></div></div></div>
+<button class="btn btn-s" type="button" id="publicBack">← Back to Productjvity</button>
 </section>
 <section class="page" id="p-account">
 <div class="eyebrow">ACCOUNT</div><h1>Sign in</h1><p class="sub" id="accountState">Create an account to keep your commitments private.</p><button type="button" class="btn btn-s" id="backToWelcome" style="display:none">← Back to welcome</button>
@@ -103,10 +111,11 @@ var demoMode = window.PRODUCTJVITY_DEMO === true || new URLSearchParams(window.l
 var authToken = localStorage.getItem("productjvity_auth_token") || "";
 var currentUserId = "";
 var demoCommitments=[{id:"demo-read",objective:"Finish my professional reading plan",deadline:"2026-10-31",stakeAmount:0,currency:"NGN",status:"active",reviewMode:"self",progressPct:50,milestones:[{id:"demo-m1",title:"Read the first two chapters",done:true},{id:"demo-m2",title:"Write down three useful ideas",done:false}],evidence:[],verifications:[]}];
-var demoAwards=[{id:"demo-award",title:"One step closer",description:"You completed a milestone."}];
+var demoAwards=[{id:"demo-award",title:"Milestone achieved badge",description:"Awarded for completing a meaningful first step.",kind:"badge"}];
 var demoGroups=[{id:"public-focus-circle",name:"30-day focus circle",challenge:"Choose one meaningful goal and make steady progress for 30 days.",status:"active",visibility:"public",ownerName:"Tomi A.",members:18,invites:[],joined:false,poolContribution:50000,pool:450000,contributors:9}];
 var demoReviewInvitations=[{id:"invite-ada",ownerName:"Ada N.",status:"invited"}];
 var demoReviewQueue=[{id:"review-chisom",ownerName:"Chisom O.",objective:"Complete my CV and send three applications",deadline:"2026-10-31",evidence:[{fileName:"Application tracker",note:"Three applications sent, with roles and dates listed."}]}];
+var demoProfilePublic=false;
 if(demoMode){ document.title="Productjvity — Interactive preview"; var previewNote=document.createElement("p"); previewNote.className="meta"; previewNote.textContent="Interactive preview — changes here are temporary and no real money is involved."; document.getElementById("p-welcome").appendChild(previewNote); document.querySelector("#p-account h1").textContent="Try the interactive demo"; document.getElementById("accountState").textContent="Use any name and email to enter the presentation demo. Nothing is saved."; document.getElementById("signUp").textContent="Enter demo"; document.getElementById("login").textContent="Continue in demo"; document.getElementById("logout").textContent="Leave demo"; document.getElementById("backToWelcome").style.display="inline-block"; }
 var errBox = document.getElementById("err");
 function err(m){
@@ -147,12 +156,13 @@ function demoView(c){ return JSON.parse(JSON.stringify(c)); }
 function demoCall(method,path,body){
   var found=function(){return demoCommitments.filter(function(c){return c.id===path.split("/")[2];})[0];};
   if(path==="/auth/signup"||path==="/auth/login") return {status:method==="POST"?(path==="/auth/signup"?201:200):405,body:{token:"demo-token",user:{id:"demo-user",name:body.name||"Demo member",email:body.email||"demo@productjvity.app"}}};
-  if(path==="/me") return authToken ? {status:200,body:{user:{id:"demo-user",name:"Demo member",email:"demo@productjvity.app",consentProfilePublic:false}}} : {status:401,body:{error:"Sign in required"}};
+  if(path==="/me") return authToken ? {status:200,body:{user:{id:"demo-user",name:"Demo member",email:"demo@productjvity.app",consentProfilePublic:demoProfilePublic}}} : {status:401,body:{error:"Sign in required"}};
   if(path==="/dashboard/summary") return {status:200,body:{active:demoCommitments.filter(function(c){return c.status==="active";}).length,completed:demoCommitments.filter(function(c){return c.status==="settled";}).length,completionRate:50,committed:demoCommitments.reduce(function(n,c){return n+(c.paymentStatus==="held"?Number(c.stakeAmount||0):0);},0),returned:demoCommitments.reduce(function(n,c){return n+Number(c.outcome&&c.outcome.returned||0);},0),forfeited:demoCommitments.reduce(function(n,c){return n+Number(c.outcome&&c.outcome.forfeited||0);},0),notifications:0}};
   if(path==="/commitments"&&method==="GET") return {status:200,body:demoCommitments.map(demoView)};
   if(path==="/commitments"&&method==="POST"){var id="demo-"+Date.now(),c={id:id,objective:body.objective,deadline:body.deadline,stakeAmount:body.stakeAmount||0,currency:"NGN",status:"draft",reviewMode:body.reviewMode||"self",progressPct:0,milestones:(body.milestones||[]).map(function(t,i){return{id:id+"-m"+i,title:t,done:false};}),evidence:[],verifications:[]};demoCommitments.unshift(c);return {status:201,body:demoView(c)};}
-  if(path.indexOf("/commitments/")===0){var c=found();if(!c)return{status:404,body:{error:"Goal not found"}};if(path.split("/").length===3&&method==="GET")return{status:200,body:demoView(c)};if(path.endsWith("/payment-demo")){c.paymentStatus="held";return{status:200,body:{demoHeld:true}};}if(path.endsWith("/activate")){c.status="active";return{status:200,body:demoView(c)};}if(path.endsWith("/submit-for-verification")){c.status="pending_verification";return{status:200,body:demoView(c)};}if(path.endsWith("/verify")){c.status=body.verdict;c.outcome={verdict:body.verdict};if(body.verdict==="successful")demoAwards.unshift({id:"goal-"+c.id,title:"Completion certificate",description:"Awarded for completing your goal with accountability."});return{status:200,body:demoView(c)};}if(path.endsWith("/settle")){c.status="settled";var amount=Number(c.stakeAmount||0);if(c.outcome&&c.outcome.verdict==="unsuccessful"){c.outcome={returned:0,reward:0,forfeited:amount};}else c.outcome={returned:amount,reward:Math.round(amount*.1),forfeited:0};return{status:200,body:demoView(c)};}if(path.endsWith("/outcome"))return{status:200,body:c.outcome||{returned:0,reward:0,forfeited:0}};if(path.endsWith("/milestones")&&method==="POST"){c.milestones.push({id:"m-"+Date.now(),title:body.title,done:false});return{status:201,body:{}};}if(path.indexOf("/toggle")>-1){var mid=path.split("/")[4];c.milestones.forEach(function(m){if(m.id===mid)m.done=body.done;});c.progressPct=c.milestones.length?Math.floor(c.milestones.filter(function(m){return m.done;}).length*100/c.milestones.length):0;return{status:200,body:{}};}if(path.endsWith("/evidence")&&method==="POST"){c.evidence.push({id:"e-"+Date.now(),note:body.note,fileName:body.fileName});return{status:201,body:{}};}}
+  if(path.indexOf("/commitments/")===0){var c=found();if(!c)return{status:404,body:{error:"Goal not found"}};if(path.split("/").length===3&&method==="GET")return{status:200,body:demoView(c)};if(path.endsWith("/payment-demo")){c.paymentStatus="held";return{status:200,body:{demoHeld:true}};}if(path.endsWith("/activate")){c.status="active";return{status:200,body:demoView(c)};}if(path.endsWith("/submit-for-verification")){c.status="pending_verification";return{status:200,body:demoView(c)};}if(path.endsWith("/verify")){c.status=body.verdict;c.outcome={verdict:body.verdict};if(body.verdict==="successful")demoAwards.unshift({id:"goal-"+c.id,title:"Completion certificate",description:"Awarded for completing your goal with accountability.",kind:"certificate"});return{status:200,body:demoView(c)};}if(path.endsWith("/settle")){c.status="settled";var amount=Number(c.stakeAmount||0);if(c.outcome&&c.outcome.verdict==="unsuccessful"){c.outcome={returned:0,reward:0,forfeited:amount};}else c.outcome={returned:amount,reward:Math.round(amount*.1),forfeited:0};return{status:200,body:demoView(c)};}if(path.endsWith("/outcome"))return{status:200,body:c.outcome||{returned:0,reward:0,forfeited:0}};if(path.endsWith("/milestones")&&method==="POST"){c.milestones.push({id:"m-"+Date.now(),title:body.title,done:false});return{status:201,body:{}};}if(path.indexOf("/toggle")>-1){var mid=path.split("/")[4];c.milestones.forEach(function(m){if(m.id===mid)m.done=body.done;});c.progressPct=c.milestones.length?Math.floor(c.milestones.filter(function(m){return m.done;}).length*100/c.milestones.length):0;return{status:200,body:{}};}if(path.endsWith("/evidence")&&method==="POST"){c.evidence.push({id:"e-"+Date.now(),note:body.note,fileName:body.fileName});return{status:201,body:{}};}}
   if(path==="/awards")return{status:200,body:demoAwards};
+  if(path.indexOf("/users/")===0&&path.endsWith("/consent")&&method==="POST"){demoProfilePublic=!!body.consentProfilePublic;return{status:200,body:{}};}
   if(path==="/institutions"&&method==="GET")return{status:200,body:demoGroups};
   if(path==="/institutions"&&method==="POST"){var amount=Number(body.poolContribution||0),group={id:"group-"+Date.now(),name:body.name,status:"active",challenge:body.challenge||"A shared goal",visibility:body.visibility||"private",owner:true,members:1,invites:body.inviteEmail?[body.inviteEmail]:[],coverData:body.coverData||"",poolContribution:amount,pool:amount,contributors:amount?1:0};demoGroups.unshift(group);return{status:201,body:group};}
   if(path==="/programmes"&&method==="GET")return{status:200,body:[]};
@@ -167,7 +177,7 @@ function demoCall(method,path,body){
 }
 function go(p){
   var ps=document.querySelectorAll(".page"); for(var i=0;i<ps.length;i++) ps[i].classList.remove("on");
-  var map={welcome:"p-welcome",dash:"p-dash",new:"p-new",discover:"p-discover",detail:"p-detail",orgs:"p-orgs",prog:"p-prog",notes:"p-notes",profile:"p-profile",account:"p-account",reviews:"p-reviews",review:"p-review"};
+  var map={welcome:"p-welcome",dash:"p-dash",new:"p-new",discover:"p-discover",detail:"p-detail",orgs:"p-orgs",prog:"p-prog",notes:"p-notes",profile:"p-profile",public:"p-public",account:"p-account",reviews:"p-reviews",review:"p-review"};
   $(map[p]||"p-dash").classList.add("on");
   var bs=document.querySelectorAll(".app-nav button"); for(var j=0;j<bs.length;j++) bs[j].classList.toggle("on",bs[j].getAttribute("data-p")===p);
   if(p==="dash") load();
@@ -527,12 +537,40 @@ function loadNotes(){
   });
 }
 $("consentBox").addEventListener("change",function(){
-  if(!currentUserId){ err("Sign in to change your profile setting."); return; }
-  call("POST","/users/"+currentUserId+"/consent",{consentProfilePublic:$("consentBox").checked}).then(function(){ loadProfile(); });
+  if(!currentUserId){ $("consentBox").checked=false; err("Sign in to change your profile setting."); return; }
+  call("POST","/users/"+currentUserId+"/consent",{consentProfilePublic:$("consentBox").checked}).then(function(result){
+    if(result.status!==200){ err("We could not update your sharing choice. Please try again."); return; }
+    loadProfile();
+  });
 });
+function publicProgressLink(){ return window.location.origin+window.location.pathname+"?progress="+encodeURIComponent(currentUserId||"demo-user"); }
+function setProgressSharing(enabled){ $("progressShare").style.display=enabled?"block":"none"; }
+function copyPublicProgressLink(){
+  var link=publicProgressLink();
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(link).then(function(){ notice("Your public progress link is copied. You can paste it into WhatsApp or any social app."); }).catch(function(){ notice("Your public progress link: "+link); });
+  }else notice("Your public progress link: "+link);
+}
+function sharePublicProgress(){
+  var link=publicProgressLink(), text="I’m making steady progress on Productjvity. See my milestones and awards.";
+  if(navigator.share){ navigator.share({title:"My Productjvity progress",text:text,url:link}).catch(function(){}); }
+  else copyPublicProgressLink();
+}
+$("shareProgress").addEventListener("click",sharePublicProgress);
+$("copyProgressLink").addEventListener("click",copyPublicProgressLink);
+$("publicBack").addEventListener("click",function(){ history.replaceState(null,"",window.location.pathname); go("welcome"); });
 function loadProfile(){
-  call("GET","/awards").then(function(r){ var L=$("awardList"); L.innerHTML=""; if(r.status!==200||!r.body.length){L.textContent="Complete a milestone to earn your first badge.";return;} r.body.forEach(function(a){var d=document.createElement("div");d.style.padding="5px 0";d.textContent="✦ "+a.title+(a.description?" — "+a.description:"");L.appendChild(d);}); });
-  call("GET","/me").then(function(me){ if(me.status!==200){ $("histBox").textContent="Sign in to view your history."; return; } currentUserId=me.body.user.id; return call("GET","/users/"+currentUserId+"/history").then(function(r){
+  call("GET","/awards").then(function(r){
+    var L=$("awardList"); L.innerHTML="";
+    if(r.status!==200||!r.body.length){ L.textContent="Complete a milestone to earn your first badge."; return; }
+    r.body.forEach(function(a){
+      var card=document.createElement("div"), seal=document.createElement("div"), text=document.createElement("div"), title=document.createElement("b"), description=document.createElement("span");
+      card.className="award-card"; seal.className="award-seal"; seal.textContent=a.kind==="certificate"?"✓":"✦";
+      title.textContent=a.title; description.className="meta"; description.textContent=a.description||"A moment worth celebrating.";
+      text.appendChild(title); text.appendChild(description); card.appendChild(seal); card.appendChild(text); L.appendChild(card);
+    });
+  });
+  call("GET","/me").then(function(me){ if(me.status!==200){ $("histBox").textContent="Sign in to view your history."; setProgressSharing(false); return; } currentUserId=me.body.user.id; return call("GET","/users/"+currentUserId+"/history").then(function(r){
     var B=$("histBox"); B.innerHTML="";
     if(r.status!==200){ B.textContent="history unavailable"; return; }
     var s=r.body.stats, d=document.createElement("p"); d.className="sub";
@@ -540,6 +578,7 @@ function loadProfile(){
     B.appendChild(d);
     $("consentBox").checked=false;
     $("consentBox").checked=!!me.body.user.consentProfilePublic;
+    setProgressSharing(!!me.body.user.consentProfilePublic);
   }); });
 }
 var googleResult=new URLSearchParams(window.location.hash.replace(/^#/,""));
@@ -559,7 +598,7 @@ if(googleResult.get("google-auth")){
   history.replaceState(null,"",window.location.pathname);
   go("account");
   err(googleResult.get("google-error"));
-}else if(authToken) load(); else go("welcome");
+}else if(new URLSearchParams(window.location.search).get("progress")&&demoMode) go("public"); else if(authToken) load(); else go("welcome");
 if("serviceWorker" in navigator) navigator.serviceWorker.register("service-worker.js").catch(function(){});
 var installPrompt=$('installPrompt'), installButton=$('installButton'), installCopy=$('installCopy'), deferredInstall;
 var isStandalone=window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;
