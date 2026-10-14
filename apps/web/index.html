@@ -41,7 +41,7 @@
 <section class="page welcome" id="p-welcome"><img class="hero-desk" src="hero-desk-scene.png" alt=""><div class="welcome-auth"><button class="btn btn-s" type="button" data-welcome="account" data-account-mode="login">Sign in</button><button class="btn btn-p" type="button" data-welcome="account" data-account-mode="signup">Get started</button></div><div class="eyebrow hero-tag">PRODUCTJVITY · GOALS THAT GET FINISHED</div><h1>Don’t leave your goals to chance. Back them with money and earn rewards for following through.</h1><p class="sub">Choose a goal, break it into small steps, and stay motivated until you finish.</p><div class="promise-grid"><div class="promise"><svg class="feature-icon" viewBox="0 0 64 64" aria-hidden="true"><circle cx="30" cy="34" r="20"/><circle cx="30" cy="34" r="11"/><circle cx="30" cy="34" r="3"/><path d="M44 20l13-13M49 7h8v8"/></svg><b>Make it real</b>Put a little money on the line to turn your intention into real commitment.</div><div class="promise"><svg class="feature-icon" viewBox="0 0 64 64" aria-hidden="true"><circle cx="23" cy="32" r="15"/><circle cx="41" cy="32" r="15"/><path d="M35 32l4 4 8-9"/></svg><b>Stay accountable</b>Track your steps, add proof, and ask for an honest check-in when you need one.</div><div class="promise"><svg class="feature-icon" viewBox="0 0 64 64" aria-hidden="true"><path d="M20 12h24l-3 18c-2 8-8 12-9 12s-7-4-9-12z"/><path d="M26 12v-5h12v5M32 42v11M23 57h18"/><path d="M32 20l3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z"/></svg><b>Earn your progress</b>Finish your goal, get your money back, and earn rewards for following through.</div></div><div class="card"><h3>For me</h3><p class="sub">Create a personal goal, add milestones, and see your progress grow.</p><button class="btn btn-p" type="button" data-welcome="individual">Start a goal</button></div><div class="card"><h3>For a group</h3><p class="sub">Create a shared challenge for your church, school, team, or community.</p><button class="btn btn-s" type="button" data-welcome="group">Explore shared goals</button></div></section>
 <section class="page on" id="p-dash">
 <div class="eyebrow">TODAY</div><h1>A little progress goes a long way.</h1><p class="sub" id="apiState">Getting your goals ready…</p>
-<div class="card" id="sumCard" style="display:none"><div class="eyebrow">Summary</div><p class="sub" id="sumText"></p></div>
+<div class="card" id="sumCard" style="display:none"><div class="eyebrow">YOUR GOALS AT A GLANCE</div><p class="sub" id="sumText"></p></div>
 <div class="card"><div class="eyebrow">WHAT WOULD YOU LIKE TO DO?</div><p class="sub">Start something new, find people to grow with, or look back at your progress.</p><div class="row"><button type="button" class="btn btn-p" id="dashNewGoal">Start a new goal</button><button type="button" class="btn btn-s" id="dashExplore">Explore shared goals</button><button type="button" class="btn btn-s" id="dashProgress">My progress</button></div></div>
 <div class="card" id="list"></div>
 <div class="card"><div class="eyebrow">YOUR PROGRESS</div><p class="sub">A simple record of the goals you have worked on.</p></div>
@@ -242,7 +242,19 @@ function load(){
   call("GET","/dashboard/summary").then(function(s){
     if(s.status===200){ var d=s.body;
       $("sumCard").style.display="block";
-      $("sumText").textContent="Active "+d.active+" · Completed "+d.completed+" · Rate "+d.completionRate+"% · Committed "+d.committed+" · Returned "+d.returned+" · Forfeited "+d.forfeited+" · Notes "+d.notifications;
+      var active=Number(d.active||0), completed=Number(d.completed||0), notes=Number(d.notifications||0), parts=[];
+      if(active===1) parts.push("You have 1 goal in progress. Every milestone you finish brings you closer to the reward.");
+      else if(active>1) parts.push("You have "+active+" goals in progress. Take them one milestone at a time.");
+      else if(completed>0) parts.push("All of your current goals are complete. What would you like to do next?");
+      else parts.push("Start one small goal today — you can build from there.");
+      if(completed===1) parts.push("You have completed 1 goal so far.");
+      else if(completed>1) parts.push("You have completed "+completed+" goals so far.");
+      if(Number(d.committed||0)>0) parts.push("You have "+naira(d.committed)+" backing your current goals.");
+      if(Number(d.returned||0)>0) parts.push(naira(d.returned)+" has been returned to you after completing goals.");
+      if(Number(d.forfeited||0)>0) parts.push(naira(d.forfeited)+" was not returned because a goal was not completed.");
+      if(notes===1) parts.push("You have 1 new update.");
+      else if(notes>1) parts.push("You have "+notes+" new updates.");
+      $("sumText").textContent=parts.join(" ");
     }
   });
   call("GET","/commitments").then(function(r){
