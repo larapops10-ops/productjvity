@@ -85,7 +85,7 @@
 <div class="card"><div class="eyebrow">YOUR AWARDS</div><p class="sub">Small moments worth celebrating.</p><div id="awardList" class="meta">Loading your awards…</div></div>
 </section>
 <section class="page" id="p-account">
-<div class="eyebrow">ACCOUNT</div><h1>Sign in</h1><p class="sub" id="accountState">Create an account to keep your commitments private.</p>
+<div class="eyebrow">ACCOUNT</div><h1>Sign in</h1><p class="sub" id="accountState">Create an account to keep your commitments private.</p><button type="button" class="btn btn-s" id="backToWelcome" style="display:none">← Back to welcome</button>
 <div class="card"><div class="eyebrow">Create account</div><div style="display:grid;gap:10px;margin-top:10px"><button type="button" class="btn btn-s" id="googleSignIn">Continue with Google</button><p class="meta" style="margin:0">or use your email address</p><input id="signUpName" placeholder="Your name"><input id="signUpEmail" type="email" placeholder="Email address"><div class="row" style="margin:0"><input id="signUpPassword" type="password" placeholder="Password (at least 10 characters)" style="flex:1;min-width:180px"><button type="button" class="btn btn-s" id="showSignUpPassword">Show</button></div><button type="button" class="btn btn-p" id="signUp">Create account</button></div></div>
 <div class="card"><div class="eyebrow">Already have an account?</div><div style="display:grid;gap:10px;margin-top:10px"><input id="loginEmail" type="email" placeholder="Email address"><div class="row" style="margin:0"><input id="loginPassword" type="password" placeholder="Password" style="flex:1;min-width:180px"><button type="button" class="btn btn-s" id="showLoginPassword">Show</button></div><button type="button" class="btn btn-s" id="login">Sign in</button><button type="button" class="btn btn-s" id="logout" style="display:none">Sign out</button></div></div>
 </section>
@@ -104,7 +104,7 @@ var authToken = localStorage.getItem("productjvity_auth_token") || "";
 var currentUserId = "";
 var demoCommitments=[{id:"demo-read",objective:"Finish my professional reading plan",deadline:"2026-10-31",stakeAmount:0,currency:"NGN",status:"active",reviewMode:"self",progressPct:50,milestones:[{id:"demo-m1",title:"Read the first two chapters",done:true},{id:"demo-m2",title:"Write down three useful ideas",done:false}],evidence:[],verifications:[]}];
 var demoAwards=[{id:"demo-award",title:"One step closer",description:"You completed a milestone."}];
-if(demoMode){ document.title="Productjvity — Interactive preview"; var previewNote=document.createElement("p"); previewNote.className="meta"; previewNote.textContent="Interactive preview — changes here are temporary and no real money is involved."; document.getElementById("p-welcome").appendChild(previewNote); document.querySelector("#p-account h1").textContent="Try the interactive demo"; document.getElementById("accountState").textContent="Use any name and email to enter the presentation demo. Nothing is saved."; document.getElementById("signUp").textContent="Enter demo"; document.getElementById("login").textContent="Continue in demo"; }
+if(demoMode){ document.title="Productjvity — Interactive preview"; var previewNote=document.createElement("p"); previewNote.className="meta"; previewNote.textContent="Interactive preview — changes here are temporary and no real money is involved."; document.getElementById("p-welcome").appendChild(previewNote); document.querySelector("#p-account h1").textContent="Try the interactive demo"; document.getElementById("accountState").textContent="Use any name and email to enter the presentation demo. Nothing is saved."; document.getElementById("signUp").textContent="Enter demo"; document.getElementById("login").textContent="Continue in demo"; document.getElementById("logout").textContent="Leave demo"; document.getElementById("backToWelcome").style.display="inline-block"; }
 var errBox = document.getElementById("err");
 function err(m){
   var raw=String(m||"").toLowerCase(), friendly="Something did not work just now. Please try again.";
@@ -144,7 +144,7 @@ function demoView(c){ return JSON.parse(JSON.stringify(c)); }
 function demoCall(method,path,body){
   var found=function(){return demoCommitments.filter(function(c){return c.id===path.split("/")[2];})[0];};
   if(path==="/auth/signup"||path==="/auth/login") return {status:method==="POST"?(path==="/auth/signup"?201:200):405,body:{token:"demo-token",user:{id:"demo-user",name:body.name||"Demo member",email:body.email||"demo@productjvity.app"}}};
-  if(path==="/me") return {status:200,body:{user:{id:"demo-user",name:"Demo member",email:"demo@productjvity.app",consentProfilePublic:false}}};
+  if(path==="/me") return authToken ? {status:200,body:{user:{id:"demo-user",name:"Demo member",email:"demo@productjvity.app",consentProfilePublic:false}}} : {status:401,body:{error:"Sign in required"}};
   if(path==="/dashboard/summary") return {status:200,body:{active:demoCommitments.filter(function(c){return c.status==="active";}).length,completed:demoCommitments.filter(function(c){return c.status==="settled";}).length,completionRate:50,committed:demoCommitments.reduce(function(n,c){return n+(c.paymentStatus==="held"?Number(c.stakeAmount||0):0);},0),returned:demoCommitments.reduce(function(n,c){return n+Number(c.outcome&&c.outcome.returned||0);},0),forfeited:demoCommitments.reduce(function(n,c){return n+Number(c.outcome&&c.outcome.forfeited||0);},0),notifications:0}};
   if(path==="/commitments"&&method==="GET") return {status:200,body:demoCommitments.map(demoView)};
   if(path==="/commitments"&&method==="POST"){var id="demo-"+Date.now(),c={id:id,objective:body.objective,deadline:body.deadline,stakeAmount:body.stakeAmount||0,currency:"NGN",status:"draft",reviewMode:body.reviewMode||"self",progressPct:0,milestones:(body.milestones||[]).map(function(t,i){return{id:id+"-m"+i,title:t,done:false};}),evidence:[],verifications:[]};demoCommitments.unshift(c);return {status:201,body:demoView(c)};}
@@ -177,7 +177,7 @@ for(var q=0;q<welcomeButtons.length;q++)(function(b){b.addEventListener("click",
 function loadAccount(){
   call("GET","/me").then(function(r){
     if(r.status===200){ currentUserId=r.body.user.id; $("accountState").textContent="Signed in as "+r.body.user.name+" ("+r.body.user.email+")."; $("logout").style.display="inline-block"; loadAccountability(); }
-    else { $("accountState").textContent="Create an account to keep your commitments private."; $("logout").style.display="none"; }
+    else { $("accountState").textContent=demoMode?"Use any name and email to enter the presentation demo. Nothing is saved.":"Create an account to keep your commitments private."; $("logout").style.display="none"; }
   });
 }
 function addPartner(name,email,done){
@@ -210,7 +210,11 @@ function saveSession(r){
 $("signUp").addEventListener("click",function(){ call("POST","/auth/signup",{name:$("signUpName").value.trim(),email:$("signUpEmail").value.trim(),password:$("signUpPassword").value}).then(function(r){ if(r.status===201) saveSession(r); else err(r.body.error||"Could not create account"); }); });
 $("login").addEventListener("click",function(){ call("POST","/auth/login",{email:$("loginEmail").value.trim(),password:$("loginPassword").value}).then(function(r){ if(r.status===200) saveSession(r); else err(r.body.error||"Could not sign in"); }); });
 $("googleSignIn").addEventListener("click",function(){ if(demoMode){ err("Google sign-in is available in the live Productjvity app."); return; } window.location.assign(API+"/auth/google"); });
-$("logout").addEventListener("click",function(){ call("POST","/auth/logout",{}).then(function(){ authToken=""; localStorage.removeItem("productjvity_auth_token"); loadAccount(); load(); }); });
+$("backToWelcome").addEventListener("click",function(){ go("welcome"); });
+$("logout").addEventListener("click",function(){
+  if(demoMode){ authToken=""; currentUserId=""; localStorage.removeItem("productjvity_auth_token"); go("welcome"); return; }
+  call("POST","/auth/logout",{}).then(function(){ authToken=""; localStorage.removeItem("productjvity_auth_token"); loadAccount(); load(); });
+});
 function wirePasswordToggle(inputId,buttonId){ var input=$(inputId),button=$(buttonId); button.addEventListener("click",function(){ var showing=input.type==="text"; input.type=showing?"password":"text"; button.textContent=showing?"Show":"Hide"; }); }
 wirePasswordToggle("signUpPassword","showSignUpPassword");
 wirePasswordToggle("loginPassword","showLoginPassword");
