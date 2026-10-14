@@ -130,7 +130,8 @@ function call(method, path, body){
   var opts = {method:method,headers:headers};
   opts.body = (method==="POST") ? JSON.stringify(body||{}) : (body?JSON.stringify(body):undefined);
   return fetch(API+path,opts)
-    .then(function(r){ return r.json().then(function(j){ return {status:r.status,body:j}; }); });
+    .then(function(r){ return r.json().then(function(j){ return {status:r.status,body:j}; }); })
+    .catch(function(){ return {status:0,body:{error:"We cannot connect right now. Please check your connection and try again."}}; });
 }
 function demoView(c){ return JSON.parse(JSON.stringify(c)); }
 function demoCall(method,path,body){

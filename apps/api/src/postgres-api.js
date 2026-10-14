@@ -302,6 +302,7 @@ export async function handlePostgresApi(req, res, url, send) {
       return send(201, { token, user: publicUser(inserted.rows[0]) });
     } catch (error) {
       if (error.code === "23505") return send(409, { error: "an account already exists for this email" });
+      console.error("Account sign-up failed", { code: error.code || "unknown", message: error.message || "unknown" });
       throw error;
     }
   }

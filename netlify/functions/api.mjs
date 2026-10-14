@@ -37,6 +37,11 @@ export async function handler(event) {
       if (await serveEvidence(req, res, url)) return;
       if (url.pathname === "/v1" || url.pathname.startsWith("/v1/")) return handlePostgresApi(req, res, url, send);
       return send(404, { error: "not-found" });
-    } catch (error) { reject(error); }
+    } catch (error) {
+      // Keep the full diagnostic in the protected Netlify function log, while
+      // returning a normal, non-technical message to the person using the app.
+      console.error("Productjvity API request failed", { message: error.message || "unknown", code: error.code || "unknown" });
+      return send(500, { error: "We could not save that just now. Please try again." });
+    }
   });
 }
