@@ -33,7 +33,7 @@
 <div class="app">
 <aside class="side"><div class="logo"><span class="mark">◍</span>Productjvity</div>
 <nav class="nav app-nav" id="nav">
-<button type="button" data-p="dash" class="on">⌂ Today</button><button type="button" data-p="new">＋ New goal</button><button type="button" data-p="discover">⌕ Explore</button><button type="button" data-p="notes">✉ Updates</button><button type="button" data-p="profile">○ My progress</button><button type="button" data-p="account">◉ Account</button>
+<button type="button" data-p="dash" class="on">⌂ Today</button><button type="button" data-p="new">＋ New goal</button><button type="button" data-p="discover">⌕ Explore</button><button type="button" data-p="notes">✉ Updates</button><button type="button" data-p="reviews">✓ Reviews</button><button type="button" data-p="profile">○ My progress</button><button type="button" data-p="account">◉ Account</button>
 </nav><div class="ver">make steady progress</div></aside>
 <main class="main">
 <div id="err"></div>
@@ -88,11 +88,10 @@
 <div class="eyebrow">ACCOUNT</div><h1>Sign in</h1><p class="sub" id="accountState">Create an account to keep your commitments private.</p>
 <div class="card"><div class="eyebrow">Create account</div><div style="display:grid;gap:10px;margin-top:10px"><button type="button" class="btn btn-s" id="googleSignIn">Continue with Google</button><p class="meta" style="margin:0">or use your email address</p><input id="signUpName" placeholder="Your name"><input id="signUpEmail" type="email" placeholder="Email address"><div class="row" style="margin:0"><input id="signUpPassword" type="password" placeholder="Password (at least 10 characters)" style="flex:1;min-width:180px"><button type="button" class="btn btn-s" id="showSignUpPassword">Show</button></div><button type="button" class="btn btn-p" id="signUp">Create account</button></div></div>
 <div class="card"><div class="eyebrow">Already have an account?</div><div style="display:grid;gap:10px;margin-top:10px"><input id="loginEmail" type="email" placeholder="Email address"><div class="row" style="margin:0"><input id="loginPassword" type="password" placeholder="Password" style="flex:1;min-width:180px"><button type="button" class="btn btn-s" id="showLoginPassword">Show</button></div><button type="button" class="btn btn-s" id="login">Sign in</button><button type="button" class="btn btn-s" id="logout" style="display:none">Sign out</button></div></div>
-<div class="card"><div class="eyebrow">ACCOUNTABILITY PARTNERS</div><p class="sub">People you trust to give an honest answer when you submit a goal.</p><div class="row"><input id="accountPartnerName" placeholder="Their name" style="flex:1;min-width:130px"><input id="accountPartnerEmail" type="email" placeholder="Their email address" style="flex:1;min-width:180px"><button type="button" class="btn btn-s" id="accountInvite">Add partner</button></div><div id="accountPartnerList" class="meta" style="margin-top:10px">Sign in to manage your partners.</div></div>
-<div class="card"><div class="eyebrow">GOALS WAITING FOR YOUR REVIEW</div><p class="sub">If a friend invited you, their submitted proof will appear here.</p><div id="reviewInviteList" class="meta">Sign in to see invitations.</div><div id="reviewQueueList" class="meta" style="margin-top:10px"></div></div>
 </section>
+<section class="page" id="p-reviews"><div class="eyebrow">REVIEWS</div><h1>Help a friend follow through.</h1><p class="sub">When someone chooses you as their accountability partner, their invitation and any proof waiting for your honest review will appear here.</p><div class="card"><div class="eyebrow">INVITATIONS</div><div id="reviewInviteList" class="meta" style="margin-top:10px">Sign in to see invitations.</div></div><div class="card"><div class="eyebrow">READY FOR YOUR REVIEW</div><div id="reviewQueueList" class="meta" style="margin-top:10px">Sign in to see goals waiting for you.</div></div></section>
 <section class="page" id="p-review"><div class="eyebrow">ACCOUNTABILITY REVIEW</div><h1 id="rTitle">Review a goal</h1><p class="sub" id="rMeta"></p><div class="card" id="rBody"></div></section>
-</main><nav class="mobile-nav app-nav" aria-label="Main navigation"><button type="button" data-p="dash" class="on">Today</button><button type="button" data-p="new">New goal</button><button type="button" data-p="discover">Explore</button><button type="button" data-p="profile">Progress</button><button type="button" data-p="account">Account</button></nav></div>
+</main><nav class="mobile-nav app-nav" aria-label="Main navigation"><button type="button" data-p="dash" class="on">Today</button><button type="button" data-p="new">New goal</button><button type="button" data-p="discover">Explore</button><button type="button" data-p="reviews">Reviews</button><button type="button" data-p="profile">Progress</button><button type="button" data-p="account">Account</button></nav></div>
 <aside class="install-prompt" id="installPrompt" aria-live="polite"><button class="install-close" id="installDismiss" type="button" aria-label="Close">×</button><strong>Keep Productjvity close</strong><p id="installCopy">Install the app for quick access from your home screen.</p><div class="row"><button class="btn btn-p" id="installButton" type="button">Install app</button><button class="btn btn-s" id="installLater" type="button">Not now</button></div></aside>
 <script src="demo-config.js"></script><script>
 (function(){
@@ -156,7 +155,7 @@ function demoCall(method,path,body){
 }
 function go(p){
   var ps=document.querySelectorAll(".page"); for(var i=0;i<ps.length;i++) ps[i].classList.remove("on");
-  var map={welcome:"p-welcome",dash:"p-dash",new:"p-new",discover:"p-discover",detail:"p-detail",orgs:"p-orgs",prog:"p-prog",notes:"p-notes",profile:"p-profile",account:"p-account",review:"p-review"};
+  var map={welcome:"p-welcome",dash:"p-dash",new:"p-new",discover:"p-discover",detail:"p-detail",orgs:"p-orgs",prog:"p-prog",notes:"p-notes",profile:"p-profile",account:"p-account",reviews:"p-reviews",review:"p-review"};
   $(map[p]||"p-dash").classList.add("on");
   var bs=document.querySelectorAll(".app-nav button"); for(var j=0;j<bs.length;j++) bs[j].classList.toggle("on",bs[j].getAttribute("data-p")===p);
   if(p==="dash") load();
@@ -164,6 +163,7 @@ function go(p){
   if(p==="notes") loadNotes();
   if(p==="profile") loadProfile();
   if(p==="account") loadAccount();
+  if(p==="reviews") loadAccountability();
 }
 var navs=document.querySelectorAll("button[data-p]");
 for(var n=0;n<navs.length;n++)(function(b){b.addEventListener("click",function(){go(b.getAttribute("data-p"));});})(navs[n]);
@@ -186,12 +186,6 @@ function addPartner(name,email,done){
 }
 function loadAccountability(){
   if(!authToken) return;
-  call("GET","/accountability-partners").then(function(r){
-    var L=$("accountPartnerList"); L.innerHTML="";
-    if(r.status!==200){ L.textContent="Your partners will appear here."; return; }
-    if(!r.body.length){ L.textContent="No partners yet. Add someone you trust above."; return; }
-    r.body.forEach(function(p){ var d=document.createElement("div"); d.textContent=(p.name||p.email)+" · "+(p.status==="accepted"?"ready to review":"invitation waiting"); L.appendChild(d); });
-  });
   call("GET","/review-invitations").then(function(r){
     var L=$("reviewInviteList"); L.innerHTML="";
     if(r.status!==200||!r.body.length){ L.textContent="No new invitations."; return; }
@@ -203,7 +197,6 @@ function loadAccountability(){
     r.body.forEach(function(item){ var d=document.createElement("div"); d.style.padding="5px 0"; var text=document.createElement("span"); text.textContent=item.ownerName+": "+item.objective+" "; var b=document.createElement("button"); b.type="button"; b.className="btn btn-s"; b.style.padding="5px 9px"; b.textContent="Review proof"; b.onclick=function(){openReview(item.id);}; d.appendChild(text);d.appendChild(b);L.appendChild(d); });
   });
 }
-$("accountInvite").addEventListener("click",function(){ var name=$("accountPartnerName").value.trim(),email=$("accountPartnerEmail").value.trim(); if(!email){err("Enter your partner's email address first.");return;} addPartner(name,email,function(){ $("accountPartnerName").value=""; $("accountPartnerEmail").value=""; }); });
 function saveSession(r){
   authToken=r.body.token;
   localStorage.setItem("productjvity_auth_token",authToken);
@@ -349,7 +342,7 @@ function openReview(id){
     var h=document.createElement("h3"); h.textContent="Their proof"; B.appendChild(h);
     if(!c.evidence.length){ var none=document.createElement("p"); none.className="meta"; none.textContent="No file was attached. Ask your friend for more information before deciding."; B.appendChild(none); }
     c.evidence.forEach(function(e){ var a=document.createElement("a"); a.href=e.fileUrl; a.textContent="Open proof"+(e.note?" — "+e.note:""); a.style.display="block"; a.style.margin="8px 0"; a.onclick=function(event){ event.preventDefault(); var preview=window.open("about:blank","_blank"); fetch(e.fileUrl,{headers:{Authorization:"Bearer "+authToken}}).then(function(response){if(!response.ok)throw new Error("Proof could not be opened");return response.blob();}).then(function(blob){if(preview)preview.location=URL.createObjectURL(blob);}).catch(function(error){if(preview)preview.close();err(error.message);}); }; B.appendChild(a); });
-    var row=document.createElement("div"); row.className="row"; function decide(verdict,label,primary){ var b=document.createElement("button"); b.type="button"; b.className="btn "+(primary?"btn-p":"btn-s"); b.textContent=label; b.onclick=function(){ b.disabled=true; call("POST","/reviews/"+id+"/decision",{verdict:verdict}).then(function(x){ if(x.status===200){ go("account"); loadAccountability(); } else {b.disabled=false;err(x.body.error||"Your decision could not be saved.");} });}; return b; } row.appendChild(decide("successful","Yes, they completed it",true)); row.appendChild(decide("unsuccessful","No, not yet",false)); B.appendChild(row); go("review");
+    var row=document.createElement("div"); row.className="row"; function decide(verdict,label,primary){ var b=document.createElement("button"); b.type="button"; b.className="btn "+(primary?"btn-p":"btn-s"); b.textContent=label; b.onclick=function(){ b.disabled=true; call("POST","/reviews/"+id+"/decision",{verdict:verdict}).then(function(x){ if(x.status===200){ go("reviews"); loadAccountability(); } else {b.disabled=false;err(x.body.error||"Your decision could not be saved.");} });}; return b; } row.appendChild(decide("successful","Yes, they completed it",true)); row.appendChild(decide("unsuccessful","No, not yet",false)); B.appendChild(row); go("review");
   });
 }
 // wizard
