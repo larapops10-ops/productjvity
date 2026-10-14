@@ -1,4 +1,4 @@
-const CACHE = "productjvity-presentation-v1";
+const CACHE = "productjvity-presentation-v2";
 const APP_SHELL = ["./", "./?demo=1", "./site.webmanifest", "./productjvity-icon.svg"];
 
 self.addEventListener("install", event => event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(APP_SHELL)).then(() => self.skipWaiting())));

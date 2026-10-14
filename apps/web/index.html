@@ -97,12 +97,14 @@
 (function(){
 "use strict";
 var API = "/v1"; // PostgreSQL API, served from the same local address as this page
-var demoMode = window.PRODUCTJVITY_DEMO === true || new URLSearchParams(window.location.search).get("demo")==="1";
+// GitHub Pages hosts the assessment build as a static site, so it always
+// uses the safe, interactive presentation demo rather than expecting an API.
+var demoMode = window.PRODUCTJVITY_DEMO === true || new URLSearchParams(window.location.search).get("demo")==="1" || /\.github\.io$/i.test(window.location.hostname);
 var authToken = localStorage.getItem("productjvity_auth_token") || "";
 var currentUserId = "";
 var demoCommitments=[{id:"demo-read",objective:"Finish my professional reading plan",deadline:"2026-10-31",stakeAmount:0,currency:"NGN",status:"active",reviewMode:"self",progressPct:50,milestones:[{id:"demo-m1",title:"Read the first two chapters",done:true},{id:"demo-m2",title:"Write down three useful ideas",done:false}],evidence:[],verifications:[]}];
 var demoAwards=[{id:"demo-award",title:"One step closer",description:"You completed a milestone."}];
-if(demoMode){ document.title="Productjvity — Interactive preview"; var previewNote=document.createElement("p"); previewNote.className="meta"; previewNote.textContent="Interactive preview — changes here are temporary and no real money is involved."; document.getElementById("p-welcome").appendChild(previewNote); }
+if(demoMode){ document.title="Productjvity — Interactive preview"; var previewNote=document.createElement("p"); previewNote.className="meta"; previewNote.textContent="Interactive preview — changes here are temporary and no real money is involved."; document.getElementById("p-welcome").appendChild(previewNote); document.querySelector("#p-account h1").textContent="Try the interactive demo"; document.getElementById("accountState").textContent="Use any name and email to enter the presentation demo. Nothing is saved."; document.getElementById("signUp").textContent="Enter demo"; document.getElementById("login").textContent="Continue in demo"; }
 var errBox = document.getElementById("err");
 function err(m){
   var raw=String(m||"").toLowerCase(), friendly="Something did not work just now. Please try again.";
