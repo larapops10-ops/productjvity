@@ -66,7 +66,7 @@
 </section>
 <section class="page" id="p-orgs">
 <div class="eyebrow">GROUPS</div><h1>Goals are better together.</h1><p class="sub">Create a challenge, invite your people, and give everyone one simple link to join in.</p>
-<div class="card"><div class="eyebrow">NEW GROUP CHALLENGE</div><div style="display:grid;gap:10px;margin-top:10px"><input id="iName" placeholder="Group name — e.g. Book club"><input id="iChallenge" placeholder="What will you work on together? — e.g. Read one book this month"><input id="iInviteEmail" type="email" placeholder="Invite someone now (optional email)"></div><div class="row"><button type="button" class="btn btn-p" id="iCreate">Create group challenge</button></div><p class="meta" id="groupCreateHint">You will get a shareable link straight away.</p></div>
+<div class="card"><div class="eyebrow">NEW GROUP CHALLENGE</div><div style="display:grid;gap:10px;margin-top:10px"><input id="iName" placeholder="Group name — e.g. Book club"><input id="iChallenge" placeholder="What will you work on together? — e.g. Read one book this month"><select id="iVisibility"><option value="private">Private — only people you invite can join</option><option value="public">Public — anyone can discover and join</option></select><input id="iInviteEmail" type="email" placeholder="Invite someone now (optional email)"></div><div class="row"><button type="button" class="btn btn-p" id="iCreate">Create group challenge</button></div><p class="meta" id="groupCreateHint">You will get a shareable link straight away.</p></div>
 <div class="card" id="orgList"></div>
 </section>
 <section class="page" id="p-prog">
@@ -104,7 +104,7 @@ var authToken = localStorage.getItem("productjvity_auth_token") || "";
 var currentUserId = "";
 var demoCommitments=[{id:"demo-read",objective:"Finish my professional reading plan",deadline:"2026-10-31",stakeAmount:0,currency:"NGN",status:"active",reviewMode:"self",progressPct:50,milestones:[{id:"demo-m1",title:"Read the first two chapters",done:true},{id:"demo-m2",title:"Write down three useful ideas",done:false}],evidence:[],verifications:[]}];
 var demoAwards=[{id:"demo-award",title:"One step closer",description:"You completed a milestone."}];
-var demoGroups=[];
+var demoGroups=[{id:"public-focus-circle",name:"30-day focus circle",challenge:"Choose one meaningful goal and make steady progress for 30 days.",status:"active",visibility:"public",ownerName:"Tomi A.",members:18,invites:[],joined:false}];
 if(demoMode){ document.title="Productjvity — Interactive preview"; var previewNote=document.createElement("p"); previewNote.className="meta"; previewNote.textContent="Interactive preview — changes here are temporary and no real money is involved."; document.getElementById("p-welcome").appendChild(previewNote); document.querySelector("#p-account h1").textContent="Try the interactive demo"; document.getElementById("accountState").textContent="Use any name and email to enter the presentation demo. Nothing is saved."; document.getElementById("signUp").textContent="Enter demo"; document.getElementById("login").textContent="Continue in demo"; document.getElementById("logout").textContent="Leave demo"; document.getElementById("backToWelcome").style.display="inline-block"; }
 var errBox = document.getElementById("err");
 function err(m){
@@ -152,7 +152,7 @@ function demoCall(method,path,body){
   if(path.indexOf("/commitments/")===0){var c=found();if(!c)return{status:404,body:{error:"Goal not found"}};if(path.split("/").length===3&&method==="GET")return{status:200,body:demoView(c)};if(path.endsWith("/payment-demo")){c.paymentStatus="held";return{status:200,body:{demoHeld:true}};}if(path.endsWith("/activate")){c.status="active";return{status:200,body:demoView(c)};}if(path.endsWith("/submit-for-verification")){c.status="pending_verification";return{status:200,body:demoView(c)};}if(path.endsWith("/verify")){c.status=body.verdict;c.outcome={verdict:body.verdict};if(body.verdict==="successful")demoAwards.unshift({id:"goal-"+c.id,title:"Completion certificate",description:"Awarded for completing your goal with accountability."});return{status:200,body:demoView(c)};}if(path.endsWith("/settle")){c.status="settled";var amount=Number(c.stakeAmount||0);if(c.outcome&&c.outcome.verdict==="unsuccessful"){c.outcome={returned:0,reward:0,forfeited:amount};}else c.outcome={returned:amount,reward:Math.round(amount*.1),forfeited:0};return{status:200,body:demoView(c)};}if(path.endsWith("/outcome"))return{status:200,body:c.outcome||{returned:0,reward:0,forfeited:0}};if(path.endsWith("/milestones")&&method==="POST"){c.milestones.push({id:"m-"+Date.now(),title:body.title,done:false});return{status:201,body:{}};}if(path.indexOf("/toggle")>-1){var mid=path.split("/")[4];c.milestones.forEach(function(m){if(m.id===mid)m.done=body.done;});c.progressPct=c.milestones.length?Math.floor(c.milestones.filter(function(m){return m.done;}).length*100/c.milestones.length):0;return{status:200,body:{}};}if(path.endsWith("/evidence")&&method==="POST"){c.evidence.push({id:"e-"+Date.now(),note:body.note,fileName:body.fileName});return{status:201,body:{}};}}
   if(path==="/awards")return{status:200,body:demoAwards};
   if(path==="/institutions"&&method==="GET")return{status:200,body:demoGroups};
-  if(path==="/institutions"&&method==="POST"){var group={id:"group-"+Date.now(),name:body.name,status:"active",challenge:body.challenge||"A shared goal",invites:body.inviteEmail?[body.inviteEmail]:[]};demoGroups.unshift(group);return{status:201,body:group};}
+  if(path==="/institutions"&&method==="POST"){var group={id:"group-"+Date.now(),name:body.name,status:"active",challenge:body.challenge||"A shared goal",visibility:body.visibility||"private",owner:true,members:1,invites:body.inviteEmail?[body.inviteEmail]:[]};demoGroups.unshift(group);return{status:201,body:group};}
   if(path==="/programmes"&&method==="GET")return{status:200,body:[]};
   if(path==="/accountability-partners"&&method==="GET")return{status:200,body:[]};
   if(path==="/review-invitations"||path==="/review-queue"||path==="/notifications")return{status:200,body:[]};
@@ -391,11 +391,11 @@ $("create").addEventListener("click",function(){
 });
 // --- Stage 4: orgs & programmes ---
 $("iCreate").addEventListener("click",function(){
-  var n=$("iName").value.trim(), challenge=$("iChallenge").value.trim(), email=$("iInviteEmail").value.trim();
+  var n=$("iName").value.trim(), challenge=$("iChallenge").value.trim(), email=$("iInviteEmail").value.trim(), visibility=$("iVisibility").value;
   if(!n){$("iName").focus();return;}
-  call("POST","/institutions",{name:n,challenge:challenge,inviteEmail:email}).then(function(r){
+  call("POST","/institutions",{name:n,challenge:challenge,inviteEmail:email,visibility:visibility}).then(function(r){
     if(r.status!==201){err(r.body.error||"Your group could not be created.");return;}
-    $("iName").value=""; $("iChallenge").value=""; $("iInviteEmail").value="";
+    $("iName").value=""; $("iChallenge").value=""; $("iInviteEmail").value=""; $("iVisibility").value="private";
     if(demoMode) $("groupCreateHint").textContent=email?"Your demo invitation is ready. Use the group’s Share challenge button below to send it.":"Your demo group is ready. Use the Share challenge button below to invite people.";
     loadOrgs();
   });
@@ -411,7 +411,17 @@ function renderDemoGroup(inst,L){
   var d=document.createElement("div"); d.style.cssText="padding:14px 0;border-top:1px solid var(--line)";
   var title=document.createElement("b"); title.textContent=inst.name; d.appendChild(title);
   var challenge=document.createElement("p"); challenge.className="sub"; challenge.style.margin="5px 0"; challenge.textContent=inst.challenge||"A shared goal"; d.appendChild(challenge);
-  var status=document.createElement("p"); status.className="meta"; status.style.margin="5px 0"; status.textContent=inst.invites&&inst.invites.length?"Invited: "+inst.invites.join(", "):"No invitations sent yet."; d.appendChild(status);
+  var status=document.createElement("p"); status.className="meta"; status.style.margin="5px 0"; status.textContent=(inst.visibility==="public"?"Public · anyone can join":"Private · invitation only")+(inst.owner?" · Your group":" · Created by "+(inst.ownerName||"a Productjvity member"))+" · "+(inst.members||1)+" members"; d.appendChild(status);
+  if(!inst.owner&&inst.visibility==="public"){
+    var publicRow=document.createElement("div"); publicRow.className="row";
+    var join=document.createElement("button"); join.type="button"; join.className="btn "+(inst.joined?"btn-s":"btn-p"); join.textContent=inst.joined?"You joined this challenge":"Join public challenge"; join.disabled=!!inst.joined; join.onclick=function(){inst.joined=true;inst.members=Number(inst.members||0)+1;notice("You joined "+inst.name+". Your first shared goal is ready to begin.");loadOrgs();}; publicRow.appendChild(join);d.appendChild(publicRow);L.appendChild(d);return;
+  }
+  if(inst.owner){
+    var visibilityRow=document.createElement("div"); visibilityRow.className="row";
+    var visibility=document.createElement("select"); visibility.style.cssText="flex:1;min-width:180px"; visibility.innerHTML="<option value='private'>Private — invitation only</option><option value='public'>Public — anyone can discover and join</option>"; visibility.value=inst.visibility||"private";
+    var saveVisibility=document.createElement("button"); saveVisibility.type="button"; saveVisibility.className="btn btn-s"; saveVisibility.textContent="Save visibility"; saveVisibility.onclick=function(){inst.visibility=visibility.value;notice(inst.visibility==="public"?"Your group is now public and can be discovered in Explore.":"Your group is now private. Only people you invite can join.");loadOrgs();};
+    visibilityRow.appendChild(visibility);visibilityRow.appendChild(saveVisibility);d.appendChild(visibilityRow);
+  }
   var inviteRow=document.createElement("div"); inviteRow.className="row";
   var email=document.createElement("input"); email.type="email"; email.placeholder="Friend’s email address"; email.style.cssText="flex:1;min-width:180px";
   var invite=document.createElement("button"); invite.type="button"; invite.className="btn btn-s"; invite.textContent="Invite"; invite.onclick=function(){var address=email.value.trim();if(!address){email.focus();return;}inst.invites=inst.invites||[];inst.invites.push(address);notice("Demo invitation prepared for "+address+". Share the challenge link too so they can join.");loadOrgs();};
