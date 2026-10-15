@@ -4,6 +4,8 @@
 
 The product is a **financially backed accountability platform** that helps individuals and organisations turn goals and commitments into measurable outcomes.
 
+Its primary individual audience is **busy, middle-income working professionals and business owners aged 30+**. They are already balancing work, clients, family, bills, health and everyday demands, but still want to keep the promises they make to themselves.
+
 Users commit to specific goals, agree to defined success criteria and, where applicable, place money at stake. The platform provides structure, reminders, progress tracking and verification. Users who successfully complete their commitments receive their committed funds and/or a reward, while users who fail to meet the agreed requirements may forfeit a predetermined portion of their commitment.
 
 The platform can also be provided as an **accountability infrastructure service** to institutions that want to create and operate their own accountability programmes for their members, employees, students, customers or communities.
@@ -36,7 +38,7 @@ The product should:
 
 **3.1 Individual Users**
 
-Individuals who want to achieve personal, professional, financial, educational, spiritual, health, lifestyle or other measurable goals.
+Busy working professionals and business owners, especially people aged 30 and above, who want to follow through on personal, professional, financial, educational, spiritual, health, lifestyle or other measurable goals despite the demands of daily life.
 
 Examples include:
 
@@ -69,7 +71,7 @@ The platform owner/operator responsible for administering the overall service, m
 
 **4\. Core Problem**
 
-People regularly set goals and make commitments but fail to follow through because of:
+Busy adults regularly set goals and make commitments but fail to follow through because of:
 
 - Procrastination.
 - Lack of accountability.
@@ -78,6 +80,7 @@ People regularly set goals and make commitments but fail to follow through becau
 - Poor visibility of progress.
 - Absence of meaningful consequences.
 - Difficulty measuring completion objectively.
+- Competing work, family, client and financial demands that make an important goal easy to postpone.
 
 Institutions face a related problem. They may want to run structured accountability programmes but lack the tools to manage participant commitments, progress, verification, rewards and consequences at scale.
 
@@ -336,6 +339,8 @@ The user should be able to:
 8. Submit evidence where necessary.
 9. Complete the commitment.
 10. Receive the applicable outcome.
+11. Add milestones gradually as the goal becomes clearer, rather than needing to plan every step at once.
+12. Invite a trusted accountability partner from the goal-creation flow where independent review is needed.
 
 **12\. Social and Group Accountability**
 
@@ -353,7 +358,7 @@ Examples include:
 - Church or community challenges.
 - Employee development challenges.
 
-The product should allow appropriate visibility of group progress while respecting individual privacy.
+The product should allow appropriate visibility of group progress while respecting individual privacy. A group owner should be able to choose **public** (discoverable and joinable) or **private** (invite-only), add a cover image, invite people, and share a group link through their social apps. A group may optionally show a clearly labelled shared success-pool contribution; it must never suggest that real money has moved until payments are fully live.
 
 **13\. Notifications and Accountability**
 
@@ -386,6 +391,8 @@ The individual user should be able to see:
 - Rewards earned.
 - Historical performance.
 - Available programmes.
+
+The Today view should present this information in plain language as a compact overview of **Goals**, **Your money** and **Updates**, while the detailed goal list below remains the place to inspect each goal and its milestone progress.
 
 The institutional dashboard should provide a corresponding overview of its programmes and participants.
 
@@ -434,6 +441,8 @@ The product should maintain a user's history of commitments, including:
 Where appropriate, users may be able to build an **accountability profile** showing their history of successful commitments.
 
 Any public or institutional use of such information should be subject to appropriate user consent and programme rules.
+
+When a user chooses to make progress public, the platform should provide a shareable public-progress link and device sharing option. Only the information the user has opted to make public should appear there.
 
 **18\. Platform Administration**
 
@@ -540,21 +549,20 @@ These decisions do not change the requirements above. They lock the build stack 
 
 ---
 
-**23. Design Direction — Decisions (27 Sep 2026)**
+**23. Design Direction — Decisions (updated 15 Oct 2026)**
 
-Premium, calm, minimal consumer product (not generic SaaS). Preview: `design.html`.
+Calm, encouraging and minimal consumer product for busy adults—not generic SaaS and not a dense financial dashboard.
 
-- Visual system: warm paper `#FAF8F5`, charcoal `#1C1917`, single indigo accent `#5F4BE0` + soft `#EFEDFD`; white surfaces, thin `#E9E3DA` borders, soft shadows, 18px radii, generous whitespace, large confident type.
-- Brand: understated "Productjvity" wordmark with minimal ◍ mark.
-- Navigation: Home / Goals / Focus / Progress / Rewards / Profile; left sidebar desktop, bottom tabs mobile.
-- Home answers "What am I working on today?": greeting + "Small progress. Big results." + Today's Focus panel with Start Focus + momentum strip.
-- Goals feel like journeys: name, %, bar, next milestone, deadline, streak — not task cards.
-- Goal detail answers "Where am I / what is next": large progress + milestone list + current tasks.
-- Focus Mode is distraction-free: title, large 32:48-style timer, Pause / Complete.
-- Completion is rewarding but restrained: "You kept your commitment." + points + streak.
-- Rewards makes progress tangible: points, streaks, goals, milestones, unlocked/next.
-- Goal creation uses progressive disclosure starting from "What do you want to accomplish?"
-- Mobile is first-class: bottom nav, large targets, minimal scroll; subtle animation only for progress/feedback.
+- Visual system: warm off-white `#F7F6F1`, dark readable ink `#202722`, muted green `#58735F` for principal actions and lavender `#9B8AC4` as the supporting accent. Use white surfaces, clear contrast, thin borders, soft shadows, rounded cards and generous whitespace.
+- Brand: understated "Productjvity" wordmark with minimal ◍ mark, with green/lavender accents used consistently.
+- Landing: the main message is “Don’t leave your goals to chance. Back them with money and earn rewards for following through.” Sign in and Get started remain visible on desktop and mobile.
+- Navigation: Today / New goal / Explore / Updates / Reviews / My progress / Account; left sidebar on desktop and bottom navigation on mobile.
+- Today answers “What is happening across my goals?” with a compact overview for Goals, Your money and Updates. Detailed goal cards stay below this overview.
+- Goals feel like journeys: name, percentage, progress bar, milestones, deadline and next action—not generic task cards.
+- Goal detail answers “Where am I and what should I do next?” through progress, incremental milestones, proof, review state and a plain-language outcome.
+- Completion is rewarding but restrained: a milestone badge, a goal-completion certificate and the applicable money outcome are shown separately.
+- Goal creation uses progressive disclosure beginning with “What do you want to accomplish?” and lets a user add milestones gradually.
+- Mobile is first-class: large targets, no squeezed landing actions, minimal scrolling and a PWA install option.
 
 ---
 
@@ -566,3 +574,33 @@ Premium, calm, minimal consumer product (not generic SaaS). Preview: `design.htm
 - Reviewer silence must never cause automatic failure. The goal moves to waiting for review until an independent decision is available.
 - Productjvity rewards progress separately from money: milestone badges, goal-completion awards and, for eligible group programmes, certificates.
 - AI may assist a reviewer but can never independently verify a penalised goal, settle funds, or apply a forfeiture.
+
+---
+
+**25. Consumer Demo and Experience Direction — Decisions (15 Oct 2026)**
+
+The presentation demo should communicate Productjvity as a warm, credible consumer product for busy adults—not as a technical financial dashboard.
+
+- **Landing message:** “Don’t leave your goals to chance. Back them with money and earn rewards for following through.” This makes the financial accountability distinction clear without presenting the product as gambling.
+- **Visual direction:** calm, minimal and encouraging; warm off-white surfaces, muted green as the main action colour, and lavender as the supporting accent. Use clear contrast, soft elevation and accessible text rather than dense technical tables.
+- **Language:** use everyday phrases such as “Your money”, “not returned”, “all caught up” and “goal in progress”. Do not expose API errors, raw financial codes or internal implementation terms to end users.
+- **Landing and navigation:** the landing page has clear Sign in and Get started actions. The signed-in experience uses Today, New goal, Explore, Updates, Reviews, My progress and Account. Accountability partner management and review invitations belong inside the application, not on the marketing landing page.
+- **Goal creation:** a progressive flow asks for the goal, success criteria, milestones, finish date, optional commitment amount and review choice. Milestones can be added one at a time during creation or later from the goal.
+- **Independent review:** a goal with a financial stake must use an accepted accountability partner, institution reviewer or platform reviewer. A self-review may be used only for goals with no adverse consequence.
+- **Awards:** show an earned milestone badge in My progress. A verified completed goal earns a completion certificate. These are recognition rewards separate from any money outcome.
+- **Today:** show one compact, grouped overview—Goals, Your money and Updates—above the existing goal list. It must complement rather than duplicate the detailed goal cards below it.
+- **Explore and groups:** let users create a group challenge with a cover image, public/private choice, optional practice contribution, invitation field and share/copy link. Explore also demonstrates public challenges created by other people and a Join action.
+- **Reviews:** show accountability invitations and submitted proof awaiting an honest review in a dedicated Reviews space.
+- **Public progress:** a user who ticks “Let others see my progress” can reveal a public-progress card and use the device share sheet or copy a link. This is opt-in only.
+- **Installability:** the demo is packaged as a Progressive Web App (PWA), with manifest, service worker and icons. Android users may install the PWA or use the presentation APK.
+
+**26. Presentation-Demo Boundary — Decisions (15 Oct 2026)**
+
+The publicly shared GitHub Pages build is an interactive presentation demo. It must prominently make these boundaries clear:
+
+- It uses temporary in-browser demo data; changes are not persistent.
+- No real money is collected, held, forfeited, returned or rewarded.
+- Group contributions and payment flows shown in the demo are illustrative practice flows.
+- The demo may display sample badges, certificates, invitations and public-progress views to demonstrate the intended experience.
+
+The production product remains subject to the rules in this PRD: verified financial outcomes, private evidence storage, independent review, transparent terms, consent, auditability, disputes, payment-provider compliance and applicable legal review.

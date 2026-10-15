@@ -4,7 +4,7 @@ Source: `PRODUCTJVITY PRODUCT REQUIREMENTS DOCUMENT.md` §§1–21.
 Operating principle: **Commit → Act → Verify → Complete → Reward**; on failure **Commit → Fail → Forfeit → Allocate**.
 Primary KPI: successful completion rate (PRD §20).
 
-Current state: PRD + README only. No app code. This plan starts at design and ends at launch-ready infrastructure.
+Current state (15 Oct 2026): a working web prototype and presentation PWA exist. The browser demo includes goal creation, incremental milestones, simulated money commitments, proof upload, AI-assisted review status, accountability-partner review, badges/certificates, groups, public-progress sharing and an installable Android-facing PWA. The production API, Neon PostgreSQL, Cloudflare R2, Netlify function and Flutterwave test-flow foundations also exist, but public production authentication and real-money operation are **not launch-ready**. This plan now records both what has been delivered for the demo and the work needed to make it safe and persistent in production.
 
 ---
 
@@ -27,7 +27,7 @@ Current state: PRD + README only. No app code. This plan starts at design and en
 
 ## 1. Product synthesis (what we are building)
 
-Users (PRD §3): individual, institution operator (church/school/employer/etc.), platform admin.
+Users (PRD §3): the primary individual persona is a busy, middle-income working professional or business owner aged 30+; institution operator (church/school/employer/etc.); and platform admin. The individual persona is balancing work, clients, family, bills, health and daily demands, and needs help keeping meaningful promises to themselves.
 Core object: `Programme` defines `ProgrammeRules` (§10). `Commitment` is a user joining a programme or creating a personal one (§11). `Verification` decides outcome (§6.4). `Settlement` moves value (§8, §6.5–6.6).
 Non-negotiables (§19, §15): clarity, measurability, fairness (no retrospective rule changes), transparency (all financial terms pre-commit), trust (auditable), positive incentives.
 
@@ -47,24 +47,32 @@ Outputs (concrete files):
 
 Exit criteria: signed-off wireframes + disclosure checklist mapping every §10/§15 bullet to a UI element.
 
+Delivered in the presentation demo:
+- A responsive landing page with the message: “Don’t leave your goals to chance. Back them with money and earn rewards for following through.”
+- A calm green-and-lavender visual system, accessible darker supporting text, card elevation, responsive navigation, PWA icon and install prompt.
+- Plain-language navigation: Today, New goal, Explore, Updates, Reviews, My progress and Account.
+- A goal-creation flow that supports incremental milestones, optional practice commitment amounts and review choice.
+- A Today overview grouped as Goals, Your money and Updates, deliberately kept separate from the detailed goal list.
+
+Remaining Stage 0 work: formal usability testing with the primary persona, reviewed accessibility audit, reusable component extraction and a current design-spec export.
+
 ## 3. Stage 1 — Architecture & technical foundation
 
-### 3.1 Locked stack (cost-optimized; swappable via adapters)
-Decision: Postgres now to avoid later migration; ZeptoMail for email to minimize cost; R2 for files.
-- Web: TypeScript + Next.js (App Router) — serves marketing, app UI, dashboards
-- API: Node.js + NestJS (or Express if team smaller) + Prisma ORM
-- DB: PostgreSQL 15+ via Postgres.app locally, managed Postgres in prod. Redis for queues/caching.
-- Jobs: BullMQ (reminders, deadline checks, settlement retries)
-- Files/evidence: Cloudflare R2 private bucket (S3-compatible, signed URLs); local `./uploads/` stub with same interface for offline dev
-- Auth: email+password + OAuth (Google) via Auth.js/Clerk; sessions JWT with `role: user | institution_admin | platform_admin`
-- Mail: adapter `notify/email` with ZeptoMail primary (upgrade to Resend/SES later without code change); SMS/push deferred behind same `notify` interface
-- Payments: adapter `payments/{hold,capture,refund,payout,webhook}` — stub `SimulatedLedger` first, then Paystack/Flutterwave/Stripe
-- Infra: no Docker for now; local Node + Postgres.app; staging/prod on Render/Fly/AWS; GitHub Actions CI (lint/type/test/migrate)
-- Docs: `docs/` versioned; OpenAPI generated from code
+### 3.1 Current stack and production target (cost-optimized; swappable via adapters)
+Decision: keep the current lightweight implementation for the presentation demo; harden the same service boundaries rather than claiming an unbuilt framework migration.
+- Web/demo: a responsive HTML/CSS/JavaScript PWA in `apps/web/`, hosted as a static interactive demo on GitHub Pages. It includes a manifest, service worker, icons and install prompt.
+- Production API: Node.js PostgreSQL API, wrapped as a Netlify Function for the web deployment. It should be progressively modularised into auth, commitments, evidence, review, ledger and notification services; framework migration is optional, not a prerequisite.
+- DB: PostgreSQL 15+ via Postgres.app locally and Neon managed PostgreSQL in production. Add Redis/queue infrastructure only when reminder, payment or review volume requires it.
+- Files/evidence: Cloudflare R2 private bucket (S3-compatible, signed URLs); local `./uploads/` stub with the same interface for offline development.
+- Auth: email/password sessions plus Google OAuth. Production must complete end-to-end sign-up/sign-in testing and keep roles `user | institution_admin | platform_admin` server-side.
+- Mail: adapter `notify/email` with ZeptoMail primary; upgrade to Resend/SES later without a product-flow change. SMS/push remain behind the same notification boundary.
+- Payments: Flutterwave test-flow plus simulated ledger for demonstrations. Retain a `payments/{hold,capture,refund,payout,webhook}` adapter; do not enable real money until compliance, reconciliation and support processes are complete.
+- Infra: GitHub Pages for the free presentation PWA; Netlify plus Neon and R2 for the production candidate. GitHub Actions publishes the presentation demo. Docker, Redis and additional cloud infrastructure are deferred.
+- Docs: versioned `docs/`; OpenAPI/API documentation should be generated or maintained alongside the production endpoint implementation.
 
 ### 3.2 System structure
-- `web/` (Next.js) → `api/` (NestJS modules: auth, users, programmes, commitments, evidence, verification, settlement, notifications, disputes, admin, metrics) → `postgres` + `redis` + `bucket` + `payments-provider` + `notify-providers`
-- Module boundaries: `verification` is strategy interface (`self_attest | manual_review | institution_review | api_check`); `settlement` is pure math + idempotent writer, never calls payments directly — goes through `ledger` then `payout` adapter. This isolates money risk.
+- Current: `apps/web/` static PWA client → GitHub Pages presentation hosting, or Netlify routes → `netlify/functions/api.mjs` → Node PostgreSQL API → Neon PostgreSQL + private R2 + provider adapters.
+- Target module boundaries: auth, users, programmes/groups, commitments, evidence, verification/reviews, awards, settlement/ledger, notifications, disputes, admin and metrics. `verification` remains a strategy interface (`self_attest | partner_review | manual_review | institution_review | ai_assisted`); `settlement` remains pure math plus an idempotent writer, never calling a payment provider directly. This isolates money risk.
 
 ### 3.3 Repo tree (to create)
 ```
@@ -88,6 +96,8 @@ prisma/schema.prisma
 - `verification_decisions(id, commitment_id, method, verdict, decided_by, reason, decided_at)` — immutable
 - `ledger_entries(id, commitment_id, type[hold|return|forfeit|reward|fee], amount, currency, idempotency_key unique, created_at)`
 - `breakage_allocations(id, commitment_id, to_success_pool, to_platform, to_institution, created_at)`
+- `accountability_partners(id, owner_id, name, email, status, accepted_at, created_at)` — invitation and acceptance record; only accepted partners may independently review a money-backed commitment.
+- `awards(id, user_id, commitment_id nullable, type[badge|certificate], title, description, awarded_at)` — non-cash recognition for a milestone or verified completion.
 - `disputes(id, commitment_id, reason, status, resolution, created_at)`
 - `notifications(id, user_id, template, payload_json, sent_at)`
 - `audit_logs(id, actor_id, action, target_type, target_id, diff_json, created_at)` — append-only
@@ -172,9 +182,30 @@ Concrete build:
 - Dashboards: `GET /dashboard/summary` (active, progress%, deadlines, committed, at-risk, rewards, history) for user; institution variant for programmes; frontend cards + tables
 - Notifications: `notify` service + templates (confirmation, deadline T-7/T-1/T0, missed milestone, encouragement, verification request, completion, reward, forfeiture, announcement); `jobs/sendReminders.js` cron + per-user frequency cap + unsubscribe/preferences page
 - History/reputation: `GET /users/:id/history`, `/users/:id/profile` with `consent_profile_public` gate; completion-rate sparkline
-- Groups: programme leaderboard (`opt-in` visibility: `private|aggregate|public`) respecting §12 privacy
+- Groups: public/private group challenges, cover image storage, member invitations, shareable links, discover-and-join flow, programme leaderboard (`opt-in` visibility: `private|aggregate|public`) and an optional contribution/success-pool model that remains simulated until the regulated payments stage. Respect §12 privacy in every group query and share link.
 - Tests: reminder fires in fake-timer test; totals reconcile; private profile returns 403 to others
 - Acceptance: user receives deadline reminder; dashboard numbers equal ledger; group board shows aggregates without leaking private users.
+
+### Presentation demo delivered (15 Oct 2026)
+
+The static GitHub Pages presentation build is deliberately an interactive demo, not a financial service. It currently demonstrates:
+
+- email/demo entry, landing-to-dashboard routing and a clear return-to-landing/sign-out path;
+- a personal goal with incremental milestones, percentage progress, proof submission and a review/settlement journey;
+- independent accountability-partner invitations, a separate Reviews space and sample proof awaiting review;
+- AI-assisted evidence-review status with human-review fallback messaging;
+- a milestone badge and a verified-completion certificate in My progress;
+- opt-in public-progress sharing through a copied link or the device share sheet;
+- Explore group challenges: public or private visibility, cover image, invitation email, social/copy link, public join flow and an optional **practice-only** shared contribution;
+- grouped Today overview cards for Goals, Your money and Updates, written in ordinary end-user language;
+- PWA manifest, service worker, icons and a friendly install prompt; an Android presentation APK wraps the hosted PWA.
+
+Demo safeguards:
+
+- all changes are temporary browser data;
+- payment, group-pool and reward screens are simulated—no real money is taken, held, forfeited, returned or paid out;
+- public-progress and group records use sample/demo data rather than a persistent public profile service;
+- the production route must retain the stricter privacy, consent, independent-review, evidence-storage and payment controls described elsewhere in this plan.
 
 ## 9. Stage 6 — Disputes, exceptions, platform admin
 
